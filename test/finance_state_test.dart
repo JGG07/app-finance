@@ -170,6 +170,53 @@ void main() {
     );
   });
 
+  test('validates installment purchases and separates completed purchases', () {
+    final state = FinanceState();
+    final card = state.creditCards.first;
+    final initialPurchaseCount = state.creditCardPurchases.length;
+    final initialCardPayment = state.cardMonthlyPaymentAmount(card.id);
+
+    state.addCreditCardPurchase(
+      cardId: card.id,
+      title: 'Amazon',
+      amount: 8000,
+      installments: 12,
+      paidInstallments: 7,
+      date: DateTime(2026, 5, 26),
+    );
+
+    final purchase = state.creditCardPurchases.first;
+
+    expect(purchase.monthlyPayment, closeTo(666.666, 0.001));
+    expect(purchase.remainingInstallments, 5);
+    expect(purchase.remainingAmount, closeTo(3333.333, 0.001));
+    expect(purchase.status, 'active');
+    expect(state.activeInstallmentPurchaseCount, 1);
+    expect(
+      state.cardMonthlyPaymentAmount(card.id),
+      closeTo(initialCardPayment + purchase.monthlyPayment, 0.001),
+    );
+
+    state.addCreditCardPurchase(
+      cardId: card.id,
+      title: 'No valida',
+      amount: 1000,
+      installments: 6,
+      paidInstallments: 7,
+      date: DateTime(2026, 5, 26),
+    );
+
+    expect(state.creditCardPurchases.length, initialPurchaseCount + 1);
+
+    state.updateCreditCardPurchase(
+      purchase.id,
+      paidInstallments: 12,
+    );
+
+    expect(state.creditCardPurchases.first.status, 'completed');
+    expect(state.activeInstallmentPurchaseCount, 0);
+  });
+
   test('adding and deleting expense updates category spent amount', () {
     final state = FinanceState();
 

@@ -479,6 +479,265 @@ class CardsScreen extends StatelessWidget {
     );
   }
 
+  void _showInstallmentPurchaseDialog(
+    BuildContext context,
+    FinanceState state, {
+    CreditCardPurchase? purchase,
+  }) {
+    final nameController = TextEditingController(text: purchase?.title ?? '');
+    final amountController = TextEditingController(
+      text: purchase?.amount.toStringAsFixed(2) ?? '',
+    );
+    final totalMonthsController = TextEditingController(
+      text: purchase?.installments.toString() ?? '',
+    );
+    final paidMonthsController = TextEditingController(
+      text: purchase?.paidInstallments.toString() ?? '0',
+    );
+    final notesController = TextEditingController(text: purchase?.notes ?? '');
+    final formKey = GlobalKey<FormState>();
+    var selectedCardId = purchase?.cardId ?? state.creditCards.first.id;
+    var selectedDate = purchase?.date;
+
+    showDialog<void>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final amount = double.tryParse(amountController.text.trim());
+            final totalMonths = int.tryParse(totalMonthsController.text.trim());
+            final paidMonths = int.tryParse(paidMonthsController.text.trim());
+            final canPreview = amount != null &&
+                totalMonths != null &&
+                paidMonths != null &&
+                amount > 0 &&
+                totalMonths > 0 &&
+                paidMonths >= 0 &&
+                paidMonths <= totalMonths;
+            final monthlyPayment =
+                canPreview ? amount / totalMonths : 0.0;
+            final remainingMonths =
+                canPreview ? totalMonths - paidMonths : 0;
+            final remainingAmount = monthlyPayment * remainingMonths;
+
+            return AlertDialog(
+              title: Text(
+                purchase == null
+                    ? 'Nueva compra a meses'
+                    : 'Editar compra a meses',
+              ),
+              content: Form(
+                key: formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        controller: nameController,
+                        autofocus: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Nombre de la compra',
+                          hintText: 'Ej. Amazon, celular, muebles',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Ingresa el nombre de la compra';
+                          }
+
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        value: selectedCardId,
+                        decoration: const InputDecoration(
+                          labelText: 'Tarjeta asociada',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: state.creditCards.map((card) {
+                          return DropdownMenuItem(
+                            value: card.id,
+                            child: Text(card.name),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          if (value != null) {
+                            setDialogState(() => selectedCardId = value);
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: amountController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        onChanged: (_) => setDialogState(() {}),
+                        decoration: const InputDecoration(
+                          labelText: 'Monto total',
+                          prefixText: r'$ ',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: _validatePositiveAmount,
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: totalMonthsController,
+                        keyboardType: TextInputType.number,
+                        onChanged: (_) => setDialogState(() {}),
+                        decoration: const InputDecoration(
+                          labelText: 'Total de meses',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: _validatePositiveInt,
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: paidMonthsController,
+                        keyboardType: TextInputType.number,
+                        onChanged: (_) => setDialogState(() {}),
+                        decoration: const InputDecoration(
+                          labelText: 'Meses pagados',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          final paid = int.tryParse(value?.trim() ?? '');
+                          final total = int.tryParse(
+                            totalMonthsController.text.trim(),
+                          );
+
+                          if (paid == null || paid < 0) {
+                            return 'Ingresa meses pagados validos';
+                          }
+
+                          if (total != null && paid > total) {
+                            return 'Los meses pagados no pueden ser mayores al total de meses.';
+                          }
+
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.calendar_today_outlined),
+                        title: const Text('Fecha de compra'),
+                        subtitle: Text(_formatDate(selectedDate)),
+                        trailing: TextButton(
+                          onPressed: () async {
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: selectedDate ?? DateTime.now(),
+                              firstDate: DateTime(2020),
+                              lastDate: DateTime(2035),
+                            );
+
+                            if (picked != null) {
+                              setDialogState(() => selectedDate = picked);
+                            }
+                          },
+                          child: const Text('Cambiar'),
+                        ),
+                      ),
+                      TextFormField(
+                        controller: notesController,
+                        minLines: 2,
+                        maxLines: 3,
+                        decoration: const InputDecoration(
+                          labelText: 'Notas',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      if (canPreview) ...[
+                        const SizedBox(height: 12),
+                        _InstallmentPreview(
+                          monthlyPayment: monthlyPayment,
+                          remainingMonths: remainingMonths,
+                          remainingAmount: remainingAmount,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                if (purchase != null)
+                  TextButton(
+                    onPressed: () {
+                      state.deleteCreditCardPurchase(purchase.id);
+                      Navigator.of(context).pop();
+                    },
+                    child: Text(
+                      'Eliminar',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancelar'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    if (formKey.currentState?.validate() ?? false) {
+                      final amount = double.parse(amountController.text.trim());
+                      final totalMonths = int.parse(
+                        totalMonthsController.text.trim(),
+                      );
+                      final paidMonths = int.parse(
+                        paidMonthsController.text.trim(),
+                      );
+
+                      if (paidMonths > totalMonths) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Los meses pagados no pueden ser mayores al total de meses.',
+                            ),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                        return;
+                      }
+
+                      if (purchase == null) {
+                        state.addCreditCardPurchase(
+                          cardId: selectedCardId,
+                          title: nameController.text.trim(),
+                          amount: amount,
+                          installments: totalMonths,
+                          paidInstallments: paidMonths,
+                          date: selectedDate,
+                          notes: notesController.text,
+                        );
+                      } else {
+                        state.updateCreditCardPurchase(
+                          purchase.id,
+                          cardId: selectedCardId,
+                          title: nameController.text.trim(),
+                          amount: amount,
+                          installments: totalMonths,
+                          paidInstallments: paidMonths,
+                          date: selectedDate,
+                          notes: notesController.text,
+                        );
+                      }
+
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  child: const Text('Guardar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _showSubscriptionsSheet(BuildContext context, FinanceState state) {
     showModalBottomSheet<void>(
       context: context,
@@ -618,10 +877,175 @@ class CardsScreen extends StatelessWidget {
     );
   }
 
+  void _showInstallmentPurchasesSheet(BuildContext context, FinanceState state) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) {
+        final colorScheme = Theme.of(context).colorScheme;
+        final textTheme = Theme.of(context).textTheme;
+        final completed = state.completedInstallmentPurchases;
+
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Meses sin intereses',
+                        style: textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    FilledButton.icon(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        _showInstallmentPurchaseDialog(context, state);
+                      },
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('Nueva'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Total mensual activo: ${CurrencyFormatter.format(state.totalMonthlyInstallmentPayments)}',
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Flexible(
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: [
+                      ...state.creditCards.map((card) {
+                        final activePurchases =
+                            state.activeInstallmentPurchasesForCard(card.id);
+                        final total = activePurchases.fold<double>(
+                          0,
+                          (sum, purchase) => sum + purchase.monthlyPayment,
+                        );
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: AppCard(
+                            child: Padding(
+                              padding: EdgeInsets.zero,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      AppIconBubble(
+                                        icon: Icons.credit_card,
+                                        color: colorScheme.primary,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          card.name,
+                                          style:
+                                              textTheme.titleMedium?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                      Text(
+                                        CurrencyFormatter.format(total),
+                                        style: textTheme.bodyMedium?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  if (activePurchases.isEmpty)
+                                    Text(
+                                      'Sin compras activas a meses.',
+                                      style: textTheme.bodySmall?.copyWith(
+                                        color: colorScheme.onSurfaceVariant,
+                                      ),
+                                    )
+                                  else
+                                    ...activePurchases.map((purchase) {
+                                      return _InstallmentPurchaseItem(
+                                        purchase: purchase,
+                                        cardName: card.name,
+                                        onEdit: () {
+                                          Navigator.of(context).pop();
+                                          _showInstallmentPurchaseDialog(
+                                            context,
+                                            state,
+                                            purchase: purchase,
+                                          );
+                                        },
+                                      );
+                                    }),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                      if (completed.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Liquidadas',
+                          style: textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ...completed.map((purchase) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: _InstallmentPurchaseItem(
+                              purchase: purchase,
+                              cardName: state.creditCardName(purchase.cardId),
+                              onEdit: () {
+                                Navigator.of(context).pop();
+                                _showInstallmentPurchaseDialog(
+                                  context,
+                                  state,
+                                  purchase: purchase,
+                                );
+                              },
+                            ),
+                          );
+                        }),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   static String? _validatePositiveAmount(String? value) {
     final number = double.tryParse(value?.trim() ?? '');
     if (number == null || number <= 0) {
       return 'Ingresa un monto positivo valido';
+    }
+
+    return null;
+  }
+
+  static String? _validatePositiveInt(String? value) {
+    final number = int.tryParse(value?.trim() ?? '');
+    if (number == null || number <= 0) {
+      return 'Ingresa un numero mayor a 0';
     }
 
     return null;
@@ -634,6 +1058,14 @@ class CardsScreen extends StatelessWidget {
     }
 
     return null;
+  }
+
+  static String _formatDate(DateTime? date) {
+    if (date == null) {
+      return 'Sin fecha';
+    }
+
+    return '${date.day}/${date.month}/${date.year}';
   }
 
   static String? _validateStatementCutDay(String? value) {
@@ -688,8 +1120,19 @@ class CardsScreen extends StatelessWidget {
           _QuickActionsCard(
             onPurchase: () => _showPurchaseDialog(context, state),
             onSubscriptions: () => _showSubscriptionsSheet(context, state),
+            onInstallments: () => _showInstallmentPurchasesSheet(
+              context,
+              state,
+            ),
             subscriptionsTotal: state.totalMonthlySubscriptions,
             subscriptionsCount: state.subscriptions.length,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _InstallmentCommitmentsCard(
+            monthlyAmount: state.totalMonthlyInstallmentPayments,
+            activeCount: state.activeInstallmentPurchaseCount,
+            remainingAmount: state.totalRemainingInstallmentAmount,
+            onView: () => _showInstallmentPurchasesSheet(context, state),
           ),
           const SizedBox(height: AppSpacing.xxl),
           const AppSectionHeader(
@@ -707,6 +1150,10 @@ class CardsScreen extends StatelessWidget {
                 onEdit: () => _showCardBalanceDialog(context, state, card),
                 onPay: () => _showPaymentDialog(context, state, card),
                 onSubscriptions: () => _showSubscriptionsSheet(context, state),
+                onInstallments: () => _showInstallmentPurchasesSheet(
+                  context,
+                  state,
+                ),
               ),
             );
           }),
@@ -775,6 +1222,73 @@ class _MonthlyCommitmentCard extends StatelessWidget {
   }
 }
 
+class _InstallmentCommitmentsCard extends StatelessWidget {
+  const _InstallmentCommitmentsCard({
+    required this.monthlyAmount,
+    required this.activeCount,
+    required this.remainingAmount,
+    required this.onView,
+  });
+
+  final double monthlyAmount;
+  final int activeCount;
+  final double remainingAmount;
+  final VoidCallback onView;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return AppCard(
+      child: Padding(
+        padding: EdgeInsets.zero,
+        child: Row(
+          children: [
+            AppIconBubble(
+              icon: Icons.view_timeline_outlined,
+              color: colorScheme.primary,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Compromisos MSI',
+                    style: textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${CurrencyFormatter.format(monthlyAmount)} al mes',
+                    style: textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '$activeCount compra${activeCount == 1 ? '' : 's'} activa${activeCount == 1 ? '' : 's'} - ${CurrencyFormatter.format(remainingAmount)} pendiente',
+                    style: textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            TextButton(
+              onPressed: onView,
+              child: const Text('Ver compras'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _CreditCardPanel extends StatelessWidget {
   const _CreditCardPanel({
     required this.card,
@@ -783,6 +1297,7 @@ class _CreditCardPanel extends StatelessWidget {
     required this.onEdit,
     required this.onPay,
     required this.onSubscriptions,
+    required this.onInstallments,
   });
 
   final CreditCard card;
@@ -791,6 +1306,7 @@ class _CreditCardPanel extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onPay;
   final VoidCallback onSubscriptions;
+  final VoidCallback onInstallments;
 
   @override
   Widget build(BuildContext context) {
@@ -802,6 +1318,16 @@ class _CreditCardPanel extends StatelessWidget {
     final subscriptionsTotal = subscriptions.fold<double>(
       0,
       (sum, subscription) => sum + subscription.amount,
+    );
+    final installmentPurchases = purchases.where((purchase) {
+      return purchase.isInstallmentPurchase && !purchase.isCompleted;
+    }).toList(growable: false);
+    final cashPurchases = purchases.where((purchase) {
+      return !purchase.isInstallmentPurchase;
+    }).toList(growable: false);
+    final installmentTotal = installmentPurchases.fold<double>(
+      0,
+      (sum, purchase) => sum + purchase.monthlyPayment,
     );
 
     return AppCard(
@@ -877,6 +1403,11 @@ class _CreditCardPanel extends StatelessWidget {
                   icon: const Icon(Icons.subscriptions_outlined, size: 18),
                   label: const Text('Suscripciones'),
                 ),
+                OutlinedButton.icon(
+                  onPressed: onInstallments,
+                  icon: const Icon(Icons.view_timeline_outlined, size: 18),
+                  label: const Text('MSI'),
+                ),
               ],
             ),
             if (subscriptions.isNotEmpty) ...[
@@ -888,7 +1419,16 @@ class _CreditCardPanel extends StatelessWidget {
                 ),
               ),
             ],
-            if (purchases.isNotEmpty) ...[
+            if (installmentPurchases.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                '${installmentPurchases.length} MSI - ${CurrencyFormatter.format(installmentTotal)} al mes',
+                style: textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+            if (cashPurchases.isNotEmpty) ...[
               const SizedBox(height: 14),
               const Divider(),
               const SizedBox(height: 6),
@@ -898,7 +1438,7 @@ class _CreditCardPanel extends StatelessWidget {
                   color: colorScheme.onSurfaceVariant,
                 ),
               ),
-              ...purchases.take(4).map((purchase) {
+              ...cashPurchases.take(4).map((purchase) {
                 return _PurchaseTile(
                   purchase: purchase,
                   statementCutDay: card.statementCutDay,
@@ -943,6 +1483,108 @@ class _MetricGrid extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+class _InstallmentPreview extends StatelessWidget {
+  const _InstallmentPreview({
+    required this.monthlyPayment,
+    required this.remainingMonths,
+    required this.remainingAmount,
+  });
+
+  final double monthlyPayment;
+  final int remainingMonths;
+  final double remainingAmount;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest.withAlpha(
+              76,
+            ),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            _InlineMoneyRow(
+              label: 'Pago mensual',
+              value: CurrencyFormatter.format(monthlyPayment),
+            ),
+            const SizedBox(height: 6),
+            _InlineMoneyRow(
+              label: 'Meses restantes',
+              value: remainingMonths.toString(),
+            ),
+            const SizedBox(height: 6),
+            _InlineMoneyRow(
+              label: 'Pendiente',
+              value: CurrencyFormatter.format(remainingAmount),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InstallmentPurchaseItem extends StatelessWidget {
+  const _InstallmentPurchaseItem({
+    required this.purchase,
+    required this.cardName,
+    required this.onEdit,
+  });
+
+  final CreditCardPurchase purchase;
+  final String cardName;
+  final VoidCallback onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final paidText =
+        '${purchase.paidInstallments} de ${purchase.installments} meses pagados';
+    final remainingText = purchase.isCompleted
+        ? 'Liquidada'
+        : '${purchase.remainingInstallments} meses restantes';
+    final subtitle = [
+      cardName,
+      '${CurrencyFormatter.format(purchase.amount)} total',
+      '${CurrencyFormatter.format(purchase.monthlyPayment)} al mes',
+      paidText,
+      remainingText,
+      'Pendiente: ${CurrencyFormatter.format(purchase.remainingAmount)}',
+      if (purchase.notes != null) purchase.notes!,
+    ].join('\n');
+
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.sm),
+      child: FinancialListItem(
+        icon: Icons.view_timeline_outlined,
+        title: purchase.title,
+        subtitle: subtitle,
+        subtitleMaxLines: 7,
+        amount: purchase.isCompleted
+            ? 'Liquidada'
+            : CurrencyFormatter.format(purchase.remainingAmount),
+        amountColor:
+            purchase.isCompleted ? colorScheme.onSurfaceVariant : null,
+        status: StatusPill(
+          label: purchase.isCompleted ? 'Liquidada' : 'Activa',
+          color: purchase.isCompleted
+              ? colorScheme.onSurfaceVariant
+              : colorScheme.primary,
+        ),
+        trailing: IconButton(
+          tooltip: 'Editar compra',
+          onPressed: onEdit,
+          icon: const Icon(Icons.edit_outlined),
+        ),
+      ),
     );
   }
 }
@@ -996,12 +1638,14 @@ class _QuickActionsCard extends StatelessWidget {
   const _QuickActionsCard({
     required this.onPurchase,
     required this.onSubscriptions,
+    required this.onInstallments,
     required this.subscriptionsTotal,
     required this.subscriptionsCount,
   });
 
   final VoidCallback onPurchase;
   final VoidCallback onSubscriptions;
+  final VoidCallback onInstallments;
   final double subscriptionsTotal;
   final int subscriptionsCount;
 
@@ -1037,25 +1681,31 @@ class _QuickActionsCard extends StatelessWidget {
                     icon: const Icon(Icons.subscriptions_outlined, size: 18),
                     label: const Text('Suscripciones'),
                   ),
+                  OutlinedButton.icon(
+                    onPressed: onInstallments,
+                    icon: const Icon(Icons.view_timeline_outlined, size: 18),
+                    label: const Text('MSI'),
+                  ),
                 ];
 
                 if (isNarrow) {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      buttons.first,
-                      const SizedBox(height: 8),
-                      buttons.last,
+                      for (var index = 0; index < buttons.length; index++) ...[
+                        if (index > 0) const SizedBox(height: 8),
+                        buttons[index],
+                      ],
                     ],
                   );
                 }
 
-                return Row(
-                  children: [
-                    Expanded(child: buttons.first),
-                    const SizedBox(width: 8),
-                    Expanded(child: buttons.last),
-                  ],
+                return Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: buttons.map((button) {
+                    return SizedBox(width: 160, child: button);
+                  }).toList(),
                 );
               },
             ),
@@ -1198,7 +1848,7 @@ class _PurchaseTile extends StatelessWidget {
     );
     final subtitle = purchase.isInstallmentPurchase
         ? '$remainingInstallments meses restantes - $paidInstallments pagados - ${CurrencyFormatter.format(purchase.monthlyPayment)} al mes'
-        : '${purchase.date.day}/${purchase.date.month}/${purchase.date.year}';
+        : _formatDate(purchase.date);
 
     return Padding(
       padding: const EdgeInsets.only(top: AppSpacing.sm),
@@ -1212,5 +1862,13 @@ class _PurchaseTile extends StatelessWidget {
         iconColor: colorScheme.primary,
       ),
     );
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) {
+      return 'Sin fecha';
+    }
+
+    return '${date.day}/${date.month}/${date.year}';
   }
 }

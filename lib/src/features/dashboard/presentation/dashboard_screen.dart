@@ -8,6 +8,7 @@ import '../../../core/state/finance_state_provider.dart';
 import '../../../core/utils/currency_converter.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../shared/presentation/app_design.dart';
+import '../../budgets/domain/monthly_extra.dart';
 import '../../cards/domain/credit_card.dart';
 import '../../cards/domain/credit_card_monthly_payment.dart';
 import '../domain/surplus_plan.dart';
@@ -31,7 +32,7 @@ class DashboardScreen extends StatelessWidget {
 
   void _showEditIncomeDialog(BuildContext context, FinanceState state) {
     final controller = TextEditingController(
-      text: state.monthlyIncome.toStringAsFixed(0),
+      text: state.monthlyIncome.toStringAsFixed(2),
     );
     final formKey = GlobalKey<FormState>();
     var selectedCurrency = AppConstants.defaultCurrency;
@@ -93,9 +94,9 @@ class DashboardScreen extends StatelessWidget {
                           return 'Por favor ingresa un monto';
                         }
 
-                        final number = double.tryParse(value);
-                        if (number == null || number <= 0) {
-                          return 'Por favor ingresa un numero positivo valido';
+                        final number = double.tryParse(value.trim());
+                        if (number == null || number < 0) {
+                          return 'Por favor ingresa un numero valido mayor o igual a 0';
                         }
 
                         return null;
@@ -166,7 +167,7 @@ class DashboardScreen extends StatelessWidget {
     FinanceState state,
     CreditCard card,
   ) {
-    final currentAmount = state.cardMonthlyPaymentAmount(card.id);
+    final currentAmount = state.baseCardMonthlyPaymentAmount(card.id);
     final controller = TextEditingController(
       text: currentAmount.toStringAsFixed(2),
     );
@@ -179,6 +180,9 @@ class DashboardScreen extends StatelessWidget {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             final estimated = state.estimatedCardMonthlyPayment(card.id);
+            final installments = state.monthlyInstallmentPaymentForCard(
+              card.id,
+            );
 
             return AlertDialog(
               title: Text('Pago de ${card.name}'),
@@ -245,6 +249,17 @@ class DashboardScreen extends StatelessWidget {
                                 .onSurfaceVariant,
                           ),
                     ),
+                    if (installments > 0) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'MSI adicionales: ${CurrencyFormatter.format(installments)} al mes',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -276,6 +291,178 @@ class DashboardScreen extends StatelessWidget {
         );
       },
     );
+  }
+
+  void _showEditMonthlyExtraDialog(
+    BuildContext context,
+    FinanceState state,
+    MonthlyExtra extra,
+  ) {
+    final nameController = TextEditingController(text: extra.name);
+    final amountController = TextEditingController(
+      text: extra.amount.toStringAsFixed(2),
+    );
+    final personController = TextEditingController(text: extra.person ?? '');
+    final notesController = TextEditingController(text: extra.notes ?? '');
+    final formKey = GlobalKey<FormState>();
+    var selectedStatus = extra.status;
+    var includedInPlan = extra.includedInPlan;
+
+    showDialog<void>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text('Apartado ${extra.name}'),
+              content: Form(
+                key: formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        controller: nameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Nombre',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Ingresa un nombre';
+                          }
+
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: amountController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: const InputDecoration(
+                          labelText: 'Monto',
+                          prefixText: r'$ ',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          final number = double.tryParse(value?.trim() ?? '');
+                          if (number == null || number <= 0) {
+                            return 'Ingresa un monto positivo valido';
+                          }
+
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<MonthlyExtraStatus>(
+                        value: selectedStatus,
+                        decoration: const InputDecoration(
+                          labelText: 'Estado',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: MonthlyExtraStatus.values.map((status) {
+                          return DropdownMenuItem(
+                            value: status,
+                            child: Text(_extraStatusLabel(status)),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          if (value != null) {
+                            setDialogState(() => selectedStatus = value);
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Incluir en plan mensual'),
+                        value: includedInPlan,
+                        onChanged: (value) {
+                          setDialogState(() => includedInPlan = value);
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: personController,
+                        decoration: const InputDecoration(
+                          labelText: 'Persona',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: notesController,
+                        minLines: 2,
+                        maxLines: 3,
+                        decoration: const InputDecoration(
+                          labelText: 'Notas',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancelar'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    if (formKey.currentState?.validate() ?? false) {
+                      state.updateMonthlyExtra(
+                        extra.id,
+                        name: nameController.text.trim(),
+                        amount: double.parse(amountController.text.trim()),
+                        status: selectedStatus,
+                        includedInPlan: includedInPlan,
+                        person: personController.text,
+                        notes: notesController.text,
+                      );
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  child: const Text('Guardar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showDebtApartadoDetail(
+    BuildContext context,
+    FinanceState state,
+    DebtApartadoItem item,
+  ) {
+    switch (item.kind) {
+      case DebtApartadoItemKind.creditCard:
+        final card = state.creditCardById(item.sourceId);
+        if (card != null) {
+          _showEditCardPaymentDialog(context, state, card);
+        }
+        break;
+      case DebtApartadoItemKind.monthlyExtra:
+        final extra = state.monthlyExtraById(item.sourceId);
+        if (extra != null) {
+          _showEditMonthlyExtraDialog(context, state, extra);
+        }
+        break;
+    }
+  }
+
+  static String _extraStatusLabel(MonthlyExtraStatus status) {
+    return switch (status) {
+      MonthlyExtraStatus.reserved => 'Apartado',
+      MonthlyExtraStatus.toDeliver => 'Por entregar',
+      MonthlyExtraStatus.delivered => 'Entregado',
+      MonthlyExtraStatus.paid => 'Pagado',
+    };
   }
 
   @override
@@ -379,11 +566,7 @@ class DashboardScreen extends StatelessWidget {
           const SizedBox(height: 14),
           DebtsAndApartadosList(
             items: dashboard.debtAndApartadoItems,
-            onEditFirstCard: () {
-              if (state.creditCards.isNotEmpty) {
-                _showEditCardPaymentDialog(context, state, state.creditCards.first);
-              }
-            },
+            onItemTap: (item) => _showDebtApartadoDetail(context, state, item),
           ),
         ],
       ),
@@ -428,33 +611,32 @@ class DashboardOverview {
     const debts = 17098.25;
     const apartados = 7649.22;
     const saving = 8999.08;
-    const free = 11248.84;
     final plannedSurplus = state.availableAfterMonthlyPlan;
     final allocation = state.surplusPlan.allocation(plannedSurplus);
 
     return DashboardOverview(
       monthlyIncome: monthlyIncome,
-      realAvailableToSpend: free,
+      realAvailableToSpend: plannedSurplus,
       monthLabel: _monthLabel(DateTime.now()),
-      incomeBreakdown: const [
+      incomeBreakdown: [
         IncomeBreakdownItem(
           label: 'Deudas',
           amount: debts,
-          percent: 38,
+          percent: _percent(debts, monthlyIncome).round(),
           color: DashboardScreen._debtColor,
           icon: Icons.account_balance_wallet_outlined,
         ),
         IncomeBreakdownItem(
           label: 'Apartados',
           amount: apartados,
-          percent: 17,
+          percent: _percent(apartados, monthlyIncome).round(),
           color: DashboardScreen._apartadoColor,
           icon: Icons.inventory_2_outlined,
         ),
         IncomeBreakdownItem(
           label: 'Ahorro / inversion',
           amount: saving,
-          percent: 20,
+          percent: _percent(saving, monthlyIncome).round(),
           color: DashboardScreen._savingColor,
           icon: Icons.trending_up,
         ),
@@ -483,10 +665,10 @@ class DashboardOverview {
         ),
         DistributionSlice(
           label: 'Te queda libre',
-          amount: free,
+          amount: plannedSurplus,
           color: DashboardScreen._freeColor,
           icon: Icons.wallet_outlined,
-          percent: _percent(free, monthlyIncome),
+          percent: _percent(plannedSurplus, monthlyIncome),
         ),
       ],
       metrics: [
@@ -542,41 +724,44 @@ class DashboardOverview {
           icon: Icons.local_atm_outlined,
         ),
       ],
-      debtAndApartadoItems: const [
-        DebtApartadoItem(
-          title: 'Tarjeta Azul',
-          type: 'Credito',
-          amount: 4905,
-          status: '61% usado',
-          progress: 0.61,
-          color: DashboardScreen._debtColor,
-          icon: Icons.credit_card_outlined,
-        ),
-        DebtApartadoItem(
-          title: 'Tarjeta Dorada',
-          type: 'Credito',
-          amount: 1800,
-          status: '90% usado',
-          progress: 0.90,
-          color: DashboardScreen._expenseColor,
-          icon: Icons.credit_score_outlined,
-        ),
-        DebtApartadoItem(
-          title: 'Asbel',
-          type: 'Apartado',
-          amount: 2000,
-          status: 'A tiempo',
-          color: DashboardScreen._apartadoColor,
-          icon: Icons.person_outline,
-        ),
-        DebtApartadoItem(
-          title: 'Carmen',
-          type: 'Apartado',
-          amount: 600,
-          status: 'A tiempo',
-          color: DashboardScreen._apartadoColor,
-          icon: Icons.person_outline,
-        ),
+      debtAndApartadoItems: [
+        ...state.creditCards.map((card) {
+          final progress = card.creditLimit > 0
+              ? (card.usedBalance / card.creditLimit)
+                  .clamp(0.0, 1.0)
+                  .toDouble()
+              : 0.0;
+
+          return DebtApartadoItem(
+            sourceId: card.id,
+            kind: DebtApartadoItemKind.creditCard,
+            title: _cardSummaryTitle(card.name),
+            type: 'Credito',
+            amount: state.cardMonthlyPaymentAmount(card.id),
+            status: '${(progress * 100).round()}% usado',
+            progress: progress,
+            color: progress >= 0.85
+                ? DashboardScreen._expenseColor
+                : DashboardScreen._debtColor,
+            icon: card.name.toLowerCase().contains('dorada')
+                ? Icons.credit_score_outlined
+                : Icons.credit_card_outlined,
+          );
+        }),
+        ...state.monthlyExtras
+            .where((extra) => extra.status == MonthlyExtraStatus.reserved)
+            .map((extra) {
+          return DebtApartadoItem(
+            sourceId: extra.id,
+            kind: DebtApartadoItemKind.monthlyExtra,
+            title: extra.name,
+            type: 'Apartado',
+            amount: extra.amount,
+            status: DashboardScreen._extraStatusLabel(extra.status),
+            color: DashboardScreen._apartadoColor,
+            icon: Icons.person_outline,
+          );
+        }),
       ],
       spentPercentLabel:
           '${_percent(state.totalSpent, monthlyIncome).toStringAsFixed(1)}%',
@@ -608,6 +793,18 @@ class DashboardOverview {
     ];
 
     return '${months[date.month - 1]} ${date.year}';
+  }
+
+  static String _cardSummaryTitle(String name) {
+    if (name.toLowerCase().contains('azul')) {
+      return 'Tarjeta Azul';
+    }
+
+    if (name.toLowerCase().contains('dorada')) {
+      return 'Tarjeta Dorada';
+    }
+
+    return name;
   }
 }
 
@@ -675,8 +872,15 @@ class SurplusPlanItem {
   final IconData icon;
 }
 
+enum DebtApartadoItemKind {
+  creditCard,
+  monthlyExtra,
+}
+
 class DebtApartadoItem {
   const DebtApartadoItem({
+    required this.sourceId,
+    required this.kind,
     required this.title,
     required this.type,
     required this.amount,
@@ -686,6 +890,8 @@ class DebtApartadoItem {
     this.progress,
   });
 
+  final String sourceId;
+  final DebtApartadoItemKind kind;
   final String title;
   final String type;
   final double amount;
@@ -714,6 +920,10 @@ class IncomeHeroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final availableRatio = amount > 0
+        ? (availableAmount / amount).clamp(0.0, 1.0).toDouble()
+        : 0.0;
+    final availablePercent = (availableRatio * 100).round();
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -743,43 +953,36 @@ class IncomeHeroCard extends StatelessWidget {
           Row(
             children: [
               const Spacer(),
-              Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: onEdit,
+              Container(
+                constraints: const BoxConstraints(minHeight: 44),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withAlpha(22),
                   borderRadius: BorderRadius.circular(AppRadii.pill),
-                  child: Container(
-                    constraints: const BoxConstraints(minHeight: 44),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withAlpha(22),
-                      borderRadius: BorderRadius.circular(AppRadii.pill),
-                      border: Border.all(
-                        color: AppColors.primary.withAlpha(80),
+                  border: Border.all(
+                    color: AppColors.primary.withAlpha(80),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      monthLabel,
+                      style: textTheme.labelLarge?.copyWith(
+                        color: const Color(0xFFD8F6E5),
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          monthLabel,
-                          style: textTheme.labelLarge?.copyWith(
-                            color: const Color(0xFFD8F6E5),
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Icon(
-                          Icons.calendar_month_outlined,
-                          color: AppColors.textSecondary,
-                          size: 18,
-                        ),
-                      ],
+                    const SizedBox(width: 8),
+                    const Icon(
+                      Icons.calendar_month_outlined,
+                      color: AppColors.textSecondary,
+                      size: 18,
                     ),
-                  ),
+                  ],
                 ),
               ),
             ],
@@ -794,17 +997,35 @@ class IncomeHeroCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 18),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              CurrencyFormatter.format(amount),
-              style: textTheme.headlineMedium?.copyWith(
-                color: const Color(0xFFF1F5F3),
-                fontSize: 52,
-                fontWeight: FontWeight.w900,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    CurrencyFormatter.format(amount),
+                    style: textTheme.headlineMedium?.copyWith(
+                      color: const Color(0xFFF1F5F3),
+                      fontSize: 52,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(width: 12),
+              Material(
+                color: AppColors.primary.withAlpha(28),
+                shape: const CircleBorder(),
+                child: IconButton(
+                  tooltip: 'Editar ingreso',
+                  onPressed: onEdit,
+                  color: AppColors.primary,
+                  icon: const Icon(Icons.edit_outlined),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 28),
           const Divider(color: AppColors.border, height: 1),
@@ -848,7 +1069,7 @@ class IncomeHeroCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '25% de tu ingreso',
+                    '$availablePercent% de tu ingreso',
                     style: textTheme.titleMedium?.copyWith(
                       color: AppColors.textSecondary,
                       fontWeight: FontWeight.w600,
@@ -860,13 +1081,13 @@ class IncomeHeroCard extends StatelessWidget {
                 width: 150,
                 height: 150,
                 child: CustomPaint(
-                  painter: _AvailableRingPainter(0.25),
+                  painter: _AvailableRingPainter(availableRatio),
                   child: Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          '25%',
+                          '$availablePercent%',
                           style: textTheme.headlineSmall?.copyWith(
                             color: AppColors.textPrimary,
                             fontWeight: FontWeight.w900,
@@ -1435,12 +1656,12 @@ class _SurplusPlanRow extends StatelessWidget {
 class DebtsAndApartadosList extends StatelessWidget {
   const DebtsAndApartadosList({
     required this.items,
-    required this.onEditFirstCard,
+    required this.onItemTap,
     super.key,
   });
 
   final List<DebtApartadoItem> items;
-  final VoidCallback onEditFirstCard;
+  final ValueChanged<DebtApartadoItem> onItemTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1465,7 +1686,7 @@ class DebtsAndApartadosList extends StatelessWidget {
                   ),
                   child: _DebtApartadoTile(
                     item: entry.value,
-                    onTap: entry.key == 0 ? onEditFirstCard : null,
+                    onTap: () => onItemTap(entry.value),
                   ),
                 ),
               ),

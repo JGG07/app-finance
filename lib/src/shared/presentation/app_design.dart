@@ -418,6 +418,7 @@ class FinancialListItem extends StatelessWidget {
     required this.amount,
     this.iconColor = AppColors.primary,
     this.amountColor,
+    this.subtitleMaxLines = 2,
     this.status,
     this.onTap,
     this.trailing,
@@ -430,6 +431,7 @@ class FinancialListItem extends StatelessWidget {
   final String amount;
   final Color iconColor;
   final Color? amountColor;
+  final int subtitleMaxLines;
   final Widget? status;
   final VoidCallback? onTap;
   final Widget? trailing;
@@ -461,7 +463,7 @@ class FinancialListItem extends StatelessWidget {
                 const SizedBox(height: AppSpacing.xs),
                 Text(
                   subtitle,
-                  maxLines: 2,
+                  maxLines: subtitleMaxLines,
                   overflow: TextOverflow.ellipsis,
                   style: textTheme.bodySmall?.copyWith(
                     color: AppColors.textSecondary,

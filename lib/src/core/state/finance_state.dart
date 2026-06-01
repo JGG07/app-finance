@@ -366,21 +366,23 @@ class FinanceState extends ChangeNotifier {
   }
 
   double get totalMonthlyInstallmentPayments {
-    final today = DateTime.now();
-
     return _creditCardPurchases
         .where((purchase) {
-          final card = _cardForPurchase(purchase);
-
-          return purchase.isInstallmentPurchase &&
-              card != null &&
-              purchase.remainingInstallmentsAsOf(
-                    today,
-                    statementCutDay: card.statementCutDay,
-                  ) >
-                  0;
+          return purchase.isInstallmentPurchase && !purchase.isCompleted;
         })
         .fold(0, (sum, purchase) => sum + purchase.monthlyPayment);
+  }
+
+  double get totalRemainingInstallmentAmount {
+    return _creditCardPurchases
+        .where((purchase) => purchase.isInstallmentPurchase)
+        .fold(0, (sum, purchase) => sum + purchase.remainingAmount);
+  }
+
+  int get activeInstallmentPurchaseCount {
+    return _creditCardPurchases.where((purchase) {
+      return purchase.isInstallmentPurchase && !purchase.isCompleted;
+    }).length;
   }
 
   double get totalMonthlySubscriptions {
@@ -474,6 +476,40 @@ class FinanceState extends ChangeNotifier {
         .toList(growable: false);
   }
 
+  List<CreditCardPurchase> installmentPurchasesForCard(String cardId) {
+    return _creditCardPurchases
+        .where((purchase) {
+          return purchase.cardId == cardId && purchase.isInstallmentPurchase;
+        })
+        .toList(growable: false);
+  }
+
+  List<CreditCardPurchase> activeInstallmentPurchasesForCard(String cardId) {
+    return _creditCardPurchases
+        .where((purchase) {
+          return purchase.cardId == cardId &&
+              purchase.isInstallmentPurchase &&
+              !purchase.isCompleted;
+        })
+        .toList(growable: false);
+  }
+
+  List<CreditCardPurchase> get activeInstallmentPurchases {
+    return _creditCardPurchases
+        .where((purchase) {
+          return purchase.isInstallmentPurchase && !purchase.isCompleted;
+        })
+        .toList(growable: false);
+  }
+
+  List<CreditCardPurchase> get completedInstallmentPurchases {
+    return _creditCardPurchases
+        .where((purchase) {
+          return purchase.isInstallmentPurchase && purchase.isCompleted;
+        })
+        .toList(growable: false);
+  }
+
   List<SubscriptionEntry> subscriptionsForCard(String cardId) {
     return _subscriptions
         .where((subscription) => subscription.cardId == cardId)
@@ -500,8 +536,23 @@ class FinanceState extends ChangeNotifier {
     return null;
   }
 
+  MonthlyExtra? monthlyExtraById(String id) {
+    for (final extra in _monthlyExtras) {
+      if (extra.id == id) {
+        return extra;
+      }
+    }
+
+    return null;
+  }
+
   double estimatedCardMonthlyPayment(String cardId) {
-    return creditCardById(cardId)?.usedBalance ?? 0;
+    final usedBalance = creditCardById(cardId)?.usedBalance ?? 0;
+    final installmentBalance = remainingInstallmentAmountForCard(cardId);
+
+    return (usedBalance - installmentBalance)
+        .clamp(0, double.infinity)
+        .toDouble();
   }
 
   CreditCardMonthlyPayment cardMonthlyPaymentFor(String cardId) {
@@ -515,6 +566,11 @@ class FinanceState extends ChangeNotifier {
   }
 
   double cardMonthlyPaymentAmount(String cardId) {
+    return baseCardMonthlyPaymentAmount(cardId) +
+        monthlyInstallmentPaymentForCard(cardId);
+  }
+
+  double baseCardMonthlyPaymentAmount(String cardId) {
     final estimatedAmount = estimatedCardMonthlyPayment(cardId);
     return cardMonthlyPaymentFor(cardId).amount(estimatedAmount);
   }
@@ -522,6 +578,24 @@ class FinanceState extends ChangeNotifier {
   CreditCardPaymentSource cardMonthlyPaymentSource(String cardId) {
     final estimatedAmount = estimatedCardMonthlyPayment(cardId);
     return cardMonthlyPaymentFor(cardId).source(estimatedAmount);
+  }
+
+  double monthlyInstallmentPaymentForCard(String cardId) {
+    return _creditCardPurchases
+        .where((purchase) {
+          return purchase.cardId == cardId &&
+              purchase.isInstallmentPurchase &&
+              !purchase.isCompleted;
+        })
+        .fold(0, (sum, purchase) => sum + purchase.monthlyPayment);
+  }
+
+  double remainingInstallmentAmountForCard(String cardId) {
+    return _creditCardPurchases
+        .where((purchase) {
+          return purchase.cardId == cardId && purchase.isInstallmentPurchase;
+        })
+        .fold(0, (sum, purchase) => sum + purchase.remainingAmount);
   }
 
   void updateMonthlyIncome(double amount) {
@@ -868,9 +942,15 @@ class FinanceState extends ChangeNotifier {
     required String title,
     required double amount,
     required int installments,
-    required DateTime date,
+    DateTime? date,
+    int paidInstallments = 0,
+    String? notes,
   }) {
-    if (amount <= 0 || installments <= 0) {
+    if (title.trim().isEmpty ||
+        amount <= 0 ||
+        installments <= 0 ||
+        paidInstallments < 0 ||
+        paidInstallments > installments) {
       return;
     }
 
@@ -883,18 +963,131 @@ class FinanceState extends ChangeNotifier {
     final purchase = CreditCardPurchase(
       id: 'card-purchase-${DateTime.now().microsecondsSinceEpoch}',
       cardId: cardId,
-      title: title,
+      title: title.trim(),
       amount: amount,
       installments: installments,
-      paidInstallments: 0,
+      paidInstallments: paidInstallments,
       date: date,
+      notes: _blankToNull(notes),
     );
 
     final card = _creditCards[index];
     _creditCards[index] = card.copyWith(
-      usedBalance: card.usedBalance + amount,
+      usedBalance: card.usedBalance + _balanceAmountForPurchase(purchase),
     );
     _creditCardPurchases.insert(0, purchase);
+    notifyListeners();
+  }
+
+  void updateCreditCardPurchase(
+    String id, {
+    String? cardId,
+    String? title,
+    double? amount,
+    int? installments,
+    int? paidInstallments,
+    DateTime? date,
+    String? notes,
+  }) {
+    final purchaseIndex = _creditCardPurchases.indexWhere((purchase) {
+      return purchase.id == id;
+    });
+
+    if (purchaseIndex == -1) {
+      return;
+    }
+
+    final current = _creditCardPurchases[purchaseIndex];
+    final nextCardId = cardId ?? current.cardId;
+    final nextTitle = title?.trim() ?? current.title;
+    final nextAmount = amount ?? current.amount;
+    final nextInstallments = installments ?? current.installments;
+    final nextPaidInstallments =
+        paidInstallments ?? current.paidInstallments;
+
+    if (nextTitle.isEmpty ||
+        nextAmount <= 0 ||
+        nextInstallments <= 0 ||
+        nextPaidInstallments < 0 ||
+        nextPaidInstallments > nextInstallments) {
+      return;
+    }
+
+    final oldCardIndex = _creditCards.indexWhere((card) {
+      return card.id == current.cardId;
+    });
+    final newCardIndex = _creditCards.indexWhere((card) {
+      return card.id == nextCardId;
+    });
+
+    if (newCardIndex == -1) {
+      return;
+    }
+
+    final nextPurchase = current.copyWith(
+      cardId: nextCardId,
+      title: nextTitle,
+      amount: nextAmount,
+      installments: nextInstallments,
+      paidInstallments: nextPaidInstallments,
+      date: date,
+      notes: notes == null ? current.notes : _blankToNull(notes),
+      clearNotes: notes != null && _blankToNull(notes) == null,
+    );
+
+    if (oldCardIndex == newCardIndex) {
+      final card = _creditCards[newCardIndex];
+      _creditCards[newCardIndex] = card.copyWith(
+        usedBalance: card.usedBalance -
+            _balanceAmountForPurchase(current) +
+            _balanceAmountForPurchase(nextPurchase),
+      );
+    } else {
+      if (oldCardIndex != -1) {
+        final oldCard = _creditCards[oldCardIndex];
+        _creditCards[oldCardIndex] = oldCard.copyWith(
+          usedBalance:
+              (oldCard.usedBalance - _balanceAmountForPurchase(current))
+                  .clamp(0, double.infinity)
+                  .toDouble(),
+        );
+      }
+
+      final newCard = _creditCards[newCardIndex];
+      _creditCards[newCardIndex] = newCard.copyWith(
+        usedBalance:
+            newCard.usedBalance + _balanceAmountForPurchase(nextPurchase),
+      );
+    }
+
+    _creditCardPurchases[purchaseIndex] = nextPurchase;
+    notifyListeners();
+  }
+
+  void deleteCreditCardPurchase(String id) {
+    final purchaseIndex = _creditCardPurchases.indexWhere((purchase) {
+      return purchase.id == id;
+    });
+
+    if (purchaseIndex == -1) {
+      return;
+    }
+
+    final purchase = _creditCardPurchases.removeAt(purchaseIndex);
+    final cardIndex = _creditCards.indexWhere((card) {
+      return card.id == purchase.cardId;
+    });
+
+    if (cardIndex != -1) {
+      final card = _creditCards[cardIndex];
+      _creditCards[cardIndex] = card.copyWith(
+        usedBalance:
+            (card.usedBalance - _balanceAmountForPurchase(purchase))
+                .clamp(0, double.infinity)
+                .toDouble(),
+      );
+    }
+
     notifyListeners();
   }
 
@@ -977,14 +1170,12 @@ class FinanceState extends ChangeNotifier {
     _categories[index] = category.copyWith(spent: nextSpent.toDouble());
   }
 
-  CreditCard? _cardForPurchase(CreditCardPurchase purchase) {
-    for (final card in _creditCards) {
-      if (card.id == purchase.cardId) {
-        return card;
-      }
+  double _balanceAmountForPurchase(CreditCardPurchase purchase) {
+    if (purchase.isInstallmentPurchase) {
+      return purchase.remainingAmount;
     }
 
-    return null;
+    return purchase.amount;
   }
 
   String? _blankToNull(String? value) {
