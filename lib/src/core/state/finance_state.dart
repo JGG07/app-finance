@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../database/finance_snapshot.dart';
+import '../database/repositories/finance_repository.dart';
+import '../database/seed/initial_finance_seed.dart';
 import '../../features/budgets/domain/budget_category.dart';
 import '../../features/budgets/domain/monthly_extra.dart';
 import '../../features/cards/domain/credit_card.dart';
@@ -12,230 +15,13 @@ import '../../features/tasks/domain/financial_task.dart';
 import '../../features/transactions/domain/transaction_entry.dart';
 
 class FinanceState extends ChangeNotifier {
-  FinanceState() {
-    _monthlyIncome = 44995.39;
-    _categories = [
-      const BudgetCategory(
-        id: 'cat-1',
-        title: 'Comida',
-        limit: 5000,
-        spent: 95,
-        color: Color(0xFF1B7F5C),
-      ),
-      const BudgetCategory(
-        id: 'cat-2',
-        title: 'Suscripciones',
-        limit: 1000,
-        spent: 249,
-        color: Color(0xFF0288D1),
-      ),
-      const BudgetCategory(
-        id: 'cat-3',
-        title: 'Transporte',
-        limit: 1800,
-        color: Color(0xFFE53935),
-      ),
-    ];
-
-    _transactions = [
-      TransactionEntry(
-        id: 'tx-1',
-        title: 'Cafe y pan',
-        amount: 95,
-        category: 'Comida',
-        date: DateTime.now().subtract(const Duration(days: 1)),
-        type: TransactionType.expense,
-      ),
-      TransactionEntry(
-        id: 'tx-2',
-        title: 'Streaming',
-        amount: 249,
-        category: 'Suscripciones',
-        date: DateTime.now().subtract(const Duration(days: 3)),
-        type: TransactionType.expense,
-      ),
-    ];
-
-    _plannedExpenses = [
-      const PlannedExpense(
-        id: 'plan-coppel-abono',
-        title: 'Coppel - abono minimo',
-        amount: 1567,
-        group: 'Coppel',
-        status: PlannedExpenseStatus.paid,
-      ),
-      const PlannedExpense(
-        id: 'plan-bbva-azul',
-        title: 'BBVA Azul',
-        amount: 1760.82,
-        group: 'Tarjetas',
-        status: PlannedExpenseStatus.pending,
-        paymentSource: 'BBVA Azul',
-      ),
-      const PlannedExpense(
-        id: 'plan-bbva-dorada',
-        title: 'BBVA Dorada',
-        amount: 14578.60,
-        group: 'Tarjetas',
-        status: PlannedExpenseStatus.pending,
-        paymentSource: 'BBVA Dorada',
-      ),
-      const PlannedExpense(
-        id: 'plan-cass',
-        title: 'Cass - tanda faltante',
-        amount: 6000,
-        group: 'Deudas',
-        status: PlannedExpenseStatus.pending,
-        note: 'Falta de la tanda de mayo',
-      ),
-      const PlannedExpense(
-        id: 'plan-asbel',
-        title: 'Asbel',
-        amount: 2000,
-        group: 'Extras',
-        status: PlannedExpenseStatus.reserved,
-      ),
-      const PlannedExpense(
-        id: 'plan-carmen',
-        title: 'Carmen',
-        amount: 600,
-        group: 'Extras',
-        status: PlannedExpenseStatus.reserved,
-      ),
-      const PlannedExpense(
-        id: 'plan-comida',
-        title: 'Comida',
-        amount: 1000,
-        group: 'Efectivo',
-        status: PlannedExpenseStatus.pending,
-        note: 'Darselo a Alan',
-      ),
-      const PlannedExpense(
-        id: 'plan-lavadora',
-        title: 'Lavadora',
-        amount: 200,
-        group: 'Extras',
-        status: PlannedExpenseStatus.pending,
-        note: 'Darselo a Erick',
-      ),
-    ];
-
-    _creditCards = [
-      const CreditCard(
-        id: 'card-azul',
-        name: 'BBVA Azul',
-        creditLimit: 25000,
-        usedBalance: 1760.82,
-        statementCutDay: 10,
-      ),
-      const CreditCard(
-        id: 'card-dorada',
-        name: 'BBVA Dorada',
-        creditLimit: 50000,
-        usedBalance: 14578.60,
-        statementCutDay: 19,
-      ),
-    ];
-
-    _creditCardPurchases = [
-      CreditCardPurchase(
-        id: 'card-purchase-1',
-        cardId: 'card-dorada',
-        title: 'Mensualidades raras',
-        amount: 1367,
-        installments: 1,
-        paidInstallments: 0,
-        date: DateTime(2026, 4, 19),
-      ),
-      CreditCardPurchase(
-        id: 'card-purchase-2',
-        cardId: 'card-azul',
-        title: 'Dulces',
-        amount: 821,
-        installments: 1,
-        paidInstallments: 0,
-        date: DateTime(2026, 5, 10),
-      ),
-    ];
-
-    _subscriptions = [
-      const SubscriptionEntry(
-        id: 'sub-chatgpt',
-        name: 'ChatGPT',
-        amount: 346.16,
-        cardId: 'card-dorada',
-      ),
-      const SubscriptionEntry(
-        id: 'sub-icloud',
-        name: 'iCloud+',
-        amount: 179,
-        cardId: 'card-dorada',
-      ),
-      const SubscriptionEntry(
-        id: 'sub-movistar',
-        name: 'Movistar',
-        amount: 349,
-        cardId: 'card-dorada',
-      ),
-      const SubscriptionEntry(
-        id: 'sub-spotify',
-        name: 'Spotify',
-        amount: 186,
-        cardId: 'card-dorada',
-      ),
-      const SubscriptionEntry(
-        id: 'sub-playstation-plus',
-        name: 'PlayStation Plus',
-        amount: 245.26,
-        cardId: 'card-azul',
-      ),
-    ];
-
-    _cardMonthlyPayments = [
-      const CreditCardMonthlyPayment(cardId: 'card-azul'),
-      const CreditCardMonthlyPayment(
-        cardId: 'card-dorada',
-        confirmedAmount: 14578.60,
-      ),
-    ];
-
-    _monthlyExtras = [
-      const MonthlyExtra(
-        id: 'extra-asbel',
-        name: 'Asbel',
-        amount: 2000,
-        status: MonthlyExtraStatus.reserved,
-        includedInPlan: true,
-      ),
-      const MonthlyExtra(
-        id: 'extra-carmen',
-        name: 'Carmen',
-        amount: 600,
-        status: MonthlyExtraStatus.reserved,
-        includedInPlan: true,
-      ),
-      const MonthlyExtra(
-        id: 'extra-comida',
-        name: 'Comida',
-        amount: 1000,
-        status: MonthlyExtraStatus.toDeliver,
-        person: 'Alan',
-        includedInPlan: true,
-      ),
-      const MonthlyExtra(
-        id: 'extra-lavadora',
-        name: 'Lavadora',
-        amount: 200,
-        status: MonthlyExtraStatus.toDeliver,
-        person: 'Erick',
-        includedInPlan: true,
-      ),
-    ];
-
-    _surplusPlan = const SurplusPlan(type: SurplusPlanType.balanced);
-    _manualTasks = [];
-    _taskOverrides = {};
+  FinanceState({FinanceStorage? repository})
+      : _repository = repository,
+        _isInitialized = repository == null {
+    _applySnapshot(initialFinanceSeed());
   }
+
+  final FinanceStorage? _repository;
 
   late double _monthlyIncome;
   late List<BudgetCategory> _categories;
@@ -249,7 +35,20 @@ class FinanceState extends ChangeNotifier {
   late SurplusPlan _surplusPlan;
   late List<FinancialTask> _manualTasks;
   late Map<String, FinancialTaskOverride> _taskOverrides;
+  Future<void>? _initialization;
+  Future<void> _pendingSave = Future.value();
+  bool _isLoading = false;
+  bool _isInitialized;
+  bool _isRetryingSave = false;
+  bool _isDisposed = false;
+  String? _loadError;
+  String? _saveError;
 
+  bool get isLoading => _isLoading;
+  bool get isInitialized => _isInitialized;
+  bool get isRetryingSave => _isRetryingSave;
+  String? get loadError => _loadError;
+  String? get saveError => _saveError;
   double get monthlyIncome => _monthlyIncome;
   List<BudgetCategory> get categories => List.unmodifiable(_categories);
   List<TransactionEntry> get transactions => List.unmodifiable(_transactions);
@@ -258,12 +57,82 @@ class FinanceState extends ChangeNotifier {
   List<CreditCard> get creditCards => List.unmodifiable(_creditCards);
   List<CreditCardPurchase> get creditCardPurchases =>
       List.unmodifiable(_creditCardPurchases);
-  List<SubscriptionEntry> get subscriptions => List.unmodifiable(_subscriptions);
+  List<SubscriptionEntry> get subscriptions =>
+      List.unmodifiable(_subscriptions);
   List<CreditCardMonthlyPayment> get cardMonthlyPayments =>
       List.unmodifiable(_cardMonthlyPayments);
   List<MonthlyExtra> get monthlyExtras => List.unmodifiable(_monthlyExtras);
   SurplusPlan get surplusPlan => _surplusPlan;
   List<FinancialTask> get manualTasks => List.unmodifiable(_manualTasks);
+
+  Future<void> initialize() {
+    final repository = _repository;
+    if (repository == null) {
+      return Future.value();
+    }
+    if (_isLoading) {
+      return _initialization ?? Future.value();
+    }
+
+    _isLoading = true;
+    _loadError = null;
+    _notifyIfActive();
+
+    final initialization = _loadSnapshot(repository);
+    _initialization = initialization;
+    return initialization;
+  }
+
+  Future<void> _loadSnapshot(FinanceStorage repository) async {
+    try {
+      final snapshot = await repository.loadSnapshot();
+      _applySnapshot(snapshot);
+      _isInitialized = true;
+      _loadError = null;
+    } catch (error) {
+      _loadError = error.toString();
+    } finally {
+      _isLoading = false;
+      _notifyIfActive();
+    }
+  }
+
+  Future<void> flushPendingSaves() async {
+    final initialization = _initialization;
+    if (initialization != null) {
+      await initialization;
+    }
+    while (true) {
+      final pendingSave = _pendingSave;
+      await pendingSave;
+      if (identical(pendingSave, _pendingSave)) {
+        return;
+      }
+    }
+  }
+
+  Future<void> retrySave() async {
+    final repository = _repository;
+    if (repository == null || _isRetryingSave) {
+      return;
+    }
+
+    _isRetryingSave = true;
+    _notifyIfActive();
+
+    try {
+      await _enqueueSave(repository, _snapshot());
+    } finally {
+      _isRetryingSave = false;
+      _notifyIfActive();
+    }
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    super.dispose();
+  }
 
   List<FinancialTask> get monthlyFinancialTasks {
     final generated = _generatedFinancialTasks.map((task) {
@@ -323,16 +192,16 @@ class FinanceState extends ChangeNotifier {
       return category.title.toLowerCase();
     }).toSet();
 
-    return _transactions
-        .where((transaction) {
-          return transaction.type == TransactionType.expense &&
-              !categoryTitles.contains(transaction.category.toLowerCase());
-        })
-        .fold(0, (sum, transaction) => sum + transaction.amount);
+    return _transactions.where((transaction) {
+      return transaction.type == TransactionType.expense &&
+          !categoryTitles.contains(transaction.category.toLowerCase());
+    }).fold(0, (sum, transaction) => sum + transaction.amount);
   }
 
   double get realEstimatedSurplus {
-    return totalMonthlyIncome - totalPlannedExpenses - unplannedRegisteredExpenses;
+    return totalMonthlyIncome -
+        totalPlannedExpenses -
+        unplannedRegisteredExpenses;
   }
 
   SurplusPlanAllocation get surplusPlanAllocation {
@@ -366,11 +235,9 @@ class FinanceState extends ChangeNotifier {
   }
 
   double get totalMonthlyInstallmentPayments {
-    return _creditCardPurchases
-        .where((purchase) {
-          return purchase.isInstallmentPurchase && !purchase.isCompleted;
-        })
-        .fold(0, (sum, purchase) => sum + purchase.monthlyPayment);
+    return _creditCardPurchases.where((purchase) {
+      return purchase.isInstallmentPurchase && !purchase.isCompleted;
+    }).fold(0, (sum, purchase) => sum + purchase.monthlyPayment);
   }
 
   double get totalRemainingInstallmentAmount {
@@ -411,9 +278,7 @@ class FinanceState extends ChangeNotifier {
           createdAt: createdAt,
         );
       }),
-      ..._monthlyExtras
-          .where((extra) => extra.includedInPlan)
-          .map((extra) {
+      ..._monthlyExtras.where((extra) => extra.includedInPlan).map((extra) {
         return FinancialTask(
           id: 'apartado-${extra.id}',
           title: _extraTaskTitle(extra),
@@ -477,37 +342,29 @@ class FinanceState extends ChangeNotifier {
   }
 
   List<CreditCardPurchase> installmentPurchasesForCard(String cardId) {
-    return _creditCardPurchases
-        .where((purchase) {
-          return purchase.cardId == cardId && purchase.isInstallmentPurchase;
-        })
-        .toList(growable: false);
+    return _creditCardPurchases.where((purchase) {
+      return purchase.cardId == cardId && purchase.isInstallmentPurchase;
+    }).toList(growable: false);
   }
 
   List<CreditCardPurchase> activeInstallmentPurchasesForCard(String cardId) {
-    return _creditCardPurchases
-        .where((purchase) {
-          return purchase.cardId == cardId &&
-              purchase.isInstallmentPurchase &&
-              !purchase.isCompleted;
-        })
-        .toList(growable: false);
+    return _creditCardPurchases.where((purchase) {
+      return purchase.cardId == cardId &&
+          purchase.isInstallmentPurchase &&
+          !purchase.isCompleted;
+    }).toList(growable: false);
   }
 
   List<CreditCardPurchase> get activeInstallmentPurchases {
-    return _creditCardPurchases
-        .where((purchase) {
-          return purchase.isInstallmentPurchase && !purchase.isCompleted;
-        })
-        .toList(growable: false);
+    return _creditCardPurchases.where((purchase) {
+      return purchase.isInstallmentPurchase && !purchase.isCompleted;
+    }).toList(growable: false);
   }
 
   List<CreditCardPurchase> get completedInstallmentPurchases {
-    return _creditCardPurchases
-        .where((purchase) {
-          return purchase.isInstallmentPurchase && purchase.isCompleted;
-        })
-        .toList(growable: false);
+    return _creditCardPurchases.where((purchase) {
+      return purchase.isInstallmentPurchase && purchase.isCompleted;
+    }).toList(growable: false);
   }
 
   List<SubscriptionEntry> subscriptionsForCard(String cardId) {
@@ -581,21 +438,17 @@ class FinanceState extends ChangeNotifier {
   }
 
   double monthlyInstallmentPaymentForCard(String cardId) {
-    return _creditCardPurchases
-        .where((purchase) {
-          return purchase.cardId == cardId &&
-              purchase.isInstallmentPurchase &&
-              !purchase.isCompleted;
-        })
-        .fold(0, (sum, purchase) => sum + purchase.monthlyPayment);
+    return _creditCardPurchases.where((purchase) {
+      return purchase.cardId == cardId &&
+          purchase.isInstallmentPurchase &&
+          !purchase.isCompleted;
+    }).fold(0, (sum, purchase) => sum + purchase.monthlyPayment);
   }
 
   double remainingInstallmentAmountForCard(String cardId) {
-    return _creditCardPurchases
-        .where((purchase) {
-          return purchase.cardId == cardId && purchase.isInstallmentPurchase;
-        })
-        .fold(0, (sum, purchase) => sum + purchase.remainingAmount);
+    return _creditCardPurchases.where((purchase) {
+      return purchase.cardId == cardId && purchase.isInstallmentPurchase;
+    }).fold(0, (sum, purchase) => sum + purchase.remainingAmount);
   }
 
   void updateMonthlyIncome(double amount) {
@@ -604,7 +457,7 @@ class FinanceState extends ChangeNotifier {
     }
 
     _monthlyIncome = amount;
-    notifyListeners();
+    _persistAndNotify();
   }
 
   void updateSurplusPlan(SurplusPlanType type) {
@@ -612,7 +465,7 @@ class FinanceState extends ChangeNotifier {
       type: type,
       clearManualAmounts: type != SurplusPlanType.custom,
     );
-    notifyListeners();
+    _persistAndNotify();
   }
 
   void updateSurplusPlanAmounts({
@@ -630,7 +483,7 @@ class FinanceState extends ChangeNotifier {
       manualInvestment: investment,
       manualFreeUse: freeUse,
     );
-    notifyListeners();
+    _persistAndNotify();
   }
 
   void addManualFinancialTask({
@@ -652,20 +505,17 @@ class FinanceState extends ChangeNotifier {
         amount: amount,
         type: FinancialTaskType.manual,
         status: status,
-        actualAmount: status == FinancialTaskStatus.partial
-            ? actualAmount
-            : null,
+        actualAmount:
+            status == FinancialTaskStatus.partial ? actualAmount : null,
         dueDate: dueDate,
         sourceId: 'manual',
         sourceType: FinancialTaskSourceType.manual,
         notes: _blankToNull(notes),
-        completedAt: status == FinancialTaskStatus.done
-            ? DateTime.now()
-            : null,
+        completedAt: status == FinancialTaskStatus.done ? DateTime.now() : null,
         createdAt: DateTime.now(),
       ),
     );
-    notifyListeners();
+    _persistAndNotify();
   }
 
   void updateFinancialTask(
@@ -679,9 +529,8 @@ class FinanceState extends ChangeNotifier {
   }) {
     final manualIndex = _manualTasks.indexWhere((task) => task.id == id);
     final nextStatus = status;
-    final completedAt = nextStatus == FinancialTaskStatus.done
-        ? DateTime.now()
-        : null;
+    final completedAt =
+        nextStatus == FinancialTaskStatus.done ? DateTime.now() : null;
 
     if (manualIndex != -1) {
       final current = _manualTasks[manualIndex];
@@ -696,7 +545,7 @@ class FinanceState extends ChangeNotifier {
         clearActualAmount: nextStatus != FinancialTaskStatus.partial,
         clearCompletedAt: nextStatus != FinancialTaskStatus.done,
       );
-      notifyListeners();
+      _persistAndNotify();
       return;
     }
 
@@ -713,7 +562,7 @@ class FinanceState extends ChangeNotifier {
       clearNotes: notes != null && _blankToNull(notes) == null,
       clearCompletedAt: nextStatus != FinancialTaskStatus.done,
     );
-    notifyListeners();
+    _persistAndNotify();
   }
 
   void updateFinancialTaskStatus(
@@ -730,7 +579,7 @@ class FinanceState extends ChangeNotifier {
 
   void deleteManualFinancialTask(String id) {
     _manualTasks.removeWhere((task) => task.id == id);
-    notifyListeners();
+    _persistAndNotify();
   }
 
   void addCategory(String title, double limit, Color color) {
@@ -742,7 +591,7 @@ class FinanceState extends ChangeNotifier {
     );
 
     _categories.add(newCategory);
-    notifyListeners();
+    _persistAndNotify();
   }
 
   void addMonthlyExtra({
@@ -768,7 +617,7 @@ class FinanceState extends ChangeNotifier {
         notes: _blankToNull(notes),
       ),
     );
-    notifyListeners();
+    _persistAndNotify();
   }
 
   void updateMonthlyExtra(
@@ -796,7 +645,7 @@ class FinanceState extends ChangeNotifier {
       person: person == null ? current.person : _blankToNull(person),
       notes: notes == null ? current.notes : _blankToNull(notes),
     );
-    notifyListeners();
+    _persistAndNotify();
   }
 
   void markMonthlyExtraDelivered(String id) {
@@ -805,7 +654,7 @@ class FinanceState extends ChangeNotifier {
 
   void deleteMonthlyExtra(String id) {
     _monthlyExtras.removeWhere((extra) => extra.id == id);
-    notifyListeners();
+    _persistAndNotify();
   }
 
   void updateCategory(
@@ -820,17 +669,38 @@ class FinanceState extends ChangeNotifier {
       return;
     }
 
+    final previousTitle = _categories[index].title;
+    final nextTitle = title?.trim();
     _categories[index] = _categories[index].copyWith(
-      title: title,
+      title: nextTitle,
       limit: limit,
       color: color,
     );
-    notifyListeners();
+
+    if (nextTitle != null &&
+        nextTitle.isNotEmpty &&
+        nextTitle.toLowerCase() != previousTitle.toLowerCase()) {
+      _transactions = _transactions.map((transaction) {
+        if (transaction.category.toLowerCase() != previousTitle.toLowerCase()) {
+          return transaction;
+        }
+
+        return TransactionEntry(
+          id: transaction.id,
+          title: transaction.title,
+          amount: transaction.amount,
+          category: nextTitle,
+          date: transaction.date,
+          type: transaction.type,
+        );
+      }).toList();
+    }
+    _persistAndNotify();
   }
 
   void deleteCategory(String id) {
     _categories.removeWhere((category) => category.id == id);
-    notifyListeners();
+    _persistAndNotify();
   }
 
   void addTransaction({
@@ -855,11 +725,12 @@ class FinanceState extends ChangeNotifier {
       _addSpentToCategory(categoryTitle, amount);
     }
 
-    notifyListeners();
+    _persistAndNotify();
   }
 
   void updateCreditCard(
     String id, {
+    String? name,
     double? creditLimit,
     double? usedBalance,
     int? statementCutDay,
@@ -871,11 +742,39 @@ class FinanceState extends ChangeNotifier {
     }
 
     _creditCards[index] = _creditCards[index].copyWith(
+      name: name,
       creditLimit: creditLimit,
       usedBalance: usedBalance,
       statementCutDay: statementCutDay,
     );
-    notifyListeners();
+    _persistAndNotify();
+  }
+
+  void addCreditCard({
+    required String name,
+    required double creditLimit,
+    required double usedBalance,
+    required int statementCutDay,
+  }) {
+    final normalizedName = name.trim();
+    if (normalizedName.isEmpty ||
+        creditLimit <= 0 ||
+        usedBalance < 0 ||
+        statementCutDay < 1 ||
+        statementCutDay > 31) {
+      return;
+    }
+
+    _creditCards.add(
+      CreditCard(
+        id: 'card-${DateTime.now().microsecondsSinceEpoch}',
+        name: normalizedName,
+        creditLimit: creditLimit,
+        usedBalance: usedBalance,
+        statementCutDay: statementCutDay,
+      ),
+    );
+    _persistAndNotify();
   }
 
   void updateCardMonthlyPayment(
@@ -898,7 +797,7 @@ class FinanceState extends ChangeNotifier {
       if (index != -1) {
         _cardMonthlyPayments.removeAt(index);
       }
-      notifyListeners();
+      _persistAndNotify();
       return;
     }
 
@@ -917,7 +816,7 @@ class FinanceState extends ChangeNotifier {
     } else {
       _cardMonthlyPayments[index] = next;
     }
-    notifyListeners();
+    _persistAndNotify();
   }
 
   void addCreditCardPayment(String cardId, double amount) {
@@ -934,7 +833,7 @@ class FinanceState extends ChangeNotifier {
     final card = _creditCards[index];
     final nextBalance = (card.usedBalance - amount).clamp(0, double.infinity);
     _creditCards[index] = card.copyWith(usedBalance: nextBalance.toDouble());
-    notifyListeners();
+    _persistAndNotify();
   }
 
   void addCreditCardPurchase({
@@ -976,7 +875,7 @@ class FinanceState extends ChangeNotifier {
       usedBalance: card.usedBalance + _balanceAmountForPurchase(purchase),
     );
     _creditCardPurchases.insert(0, purchase);
-    notifyListeners();
+    _persistAndNotify();
   }
 
   void updateCreditCardPurchase(
@@ -1002,8 +901,7 @@ class FinanceState extends ChangeNotifier {
     final nextTitle = title?.trim() ?? current.title;
     final nextAmount = amount ?? current.amount;
     final nextInstallments = installments ?? current.installments;
-    final nextPaidInstallments =
-        paidInstallments ?? current.paidInstallments;
+    final nextPaidInstallments = paidInstallments ?? current.paidInstallments;
 
     if (nextTitle.isEmpty ||
         nextAmount <= 0 ||
@@ -1061,7 +959,7 @@ class FinanceState extends ChangeNotifier {
     }
 
     _creditCardPurchases[purchaseIndex] = nextPurchase;
-    notifyListeners();
+    _persistAndNotify();
   }
 
   void deleteCreditCardPurchase(String id) {
@@ -1081,14 +979,13 @@ class FinanceState extends ChangeNotifier {
     if (cardIndex != -1) {
       final card = _creditCards[cardIndex];
       _creditCards[cardIndex] = card.copyWith(
-        usedBalance:
-            (card.usedBalance - _balanceAmountForPurchase(purchase))
-                .clamp(0, double.infinity)
-                .toDouble(),
+        usedBalance: (card.usedBalance - _balanceAmountForPurchase(purchase))
+            .clamp(0, double.infinity)
+            .toDouble(),
       );
     }
 
-    notifyListeners();
+    _persistAndNotify();
   }
 
   void addSubscription({
@@ -1108,7 +1005,7 @@ class FinanceState extends ChangeNotifier {
         cardId: cardId,
       ),
     );
-    notifyListeners();
+    _persistAndNotify();
   }
 
   void updateSubscription(
@@ -1130,12 +1027,12 @@ class FinanceState extends ChangeNotifier {
       amount: amount,
       cardId: cardId,
     );
-    notifyListeners();
+    _persistAndNotify();
   }
 
   void deleteSubscription(String id) {
     _subscriptions.removeWhere((subscription) => subscription.id == id);
-    notifyListeners();
+    _persistAndNotify();
   }
 
   void deleteTransaction(String id) {
@@ -1153,7 +1050,7 @@ class FinanceState extends ChangeNotifier {
       _addSpentToCategory(transaction.category, -transaction.amount);
     }
 
-    notifyListeners();
+    _persistAndNotify();
   }
 
   void _addSpentToCategory(String title, double amount) {
@@ -1168,6 +1065,72 @@ class FinanceState extends ChangeNotifier {
     final category = _categories[index];
     final nextSpent = (category.spent + amount).clamp(0, double.infinity);
     _categories[index] = category.copyWith(spent: nextSpent.toDouble());
+  }
+
+  void _persistAndNotify() {
+    _notifyIfActive();
+    final repository = _repository;
+    if (repository == null) {
+      return;
+    }
+
+    final snapshot = _snapshot();
+    _enqueueSave(repository, snapshot);
+  }
+
+  Future<void> _enqueueSave(
+    FinanceStorage repository,
+    FinanceSnapshot snapshot,
+  ) {
+    _pendingSave = _pendingSave
+        .catchError((_) {})
+        .then((_) => repository.saveSnapshot(snapshot))
+        .then((_) {
+      _saveError = null;
+      _notifyIfActive();
+    }).catchError((Object error) {
+      _saveError = error.toString();
+      _notifyIfActive();
+    });
+    return _pendingSave;
+  }
+
+  void _notifyIfActive() {
+    if (!_isDisposed) {
+      notifyListeners();
+    }
+  }
+
+  void _applySnapshot(FinanceSnapshot snapshot) {
+    _monthlyIncome = snapshot.monthlyIncome;
+    _categories = List.of(snapshot.categories);
+    _transactions = List.of(snapshot.transactions);
+    _plannedExpenses = List.of(snapshot.plannedExpenses);
+    _creditCards = List.of(snapshot.creditCards);
+    _creditCardPurchases = List.of(snapshot.creditCardPurchases);
+    _subscriptions = List.of(snapshot.subscriptions);
+    _cardMonthlyPayments = List.of(snapshot.cardMonthlyPayments);
+    _monthlyExtras = List.of(snapshot.monthlyExtras);
+    _surplusPlan = snapshot.surplusPlan;
+    _manualTasks = List.of(snapshot.manualTasks);
+    _taskOverrides = Map.of(snapshot.taskOverrides);
+  }
+
+  FinanceSnapshot _snapshot() {
+    return FinanceSnapshot(
+      monthlyIncome: _monthlyIncome,
+      categories: List.of(_categories),
+      transactions: List.of(_transactions),
+      plannedExpenses: List.of(_plannedExpenses),
+      creditCards: List.of(_creditCards),
+      creditCardPurchases: List.of(_creditCardPurchases),
+      subscriptions: List.of(_subscriptions),
+      cardMonthlyPayments: List.of(_cardMonthlyPayments),
+      monthlyExtras: List.of(_monthlyExtras),
+      surplusPlan: _surplusPlan,
+      manualTasks: List.of(_manualTasks),
+      taskOverrides: Map.of(_taskOverrides),
+    );
   }
 
   double _balanceAmountForPurchase(CreditCardPurchase purchase) {

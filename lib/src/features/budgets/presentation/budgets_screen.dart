@@ -275,7 +275,7 @@ class BudgetsScreen extends StatelessWidget {
                         autofocus: true,
                         decoration: const InputDecoration(
                           labelText: 'Nombre',
-                          hintText: 'Ej. Asbel, Comida, Lavadora',
+                          hintText: 'Ej. Ahorro, regalo, mantenimiento',
                           border: OutlineInputBorder(),
                         ),
                         validator: (value) {
@@ -330,7 +330,7 @@ class BudgetsScreen extends StatelessWidget {
                         controller: personController,
                         decoration: const InputDecoration(
                           labelText: 'Persona opcional',
-                          hintText: 'Ej. Alan, Erick',
+                          hintText: 'Ej. Familiar o proveedor',
                           border: OutlineInputBorder(),
                         ),
                       ),

@@ -15,10 +15,14 @@ import '../domain/surplus_plan.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({
+    required this.onViewDebts,
+    required this.onViewApartados,
     required this.onViewPlan,
     super.key,
   });
 
+  final VoidCallback onViewDebts;
+  final VoidCallback onViewApartados;
   final VoidCallback onViewPlan;
 
   static const _green = AppColors.primary;
@@ -244,9 +248,8 @@ class DashboardScreen extends StatelessWidget {
                     Text(
                       'Estimado actual: ${CurrencyFormatter.format(estimated)}',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                     ),
                     if (installments > 0) ...[
@@ -517,6 +520,16 @@ class DashboardScreen extends StatelessWidget {
             monthLabel: dashboard.monthLabel,
             breakdown: dashboard.incomeBreakdown,
             onEdit: () => _showEditIncomeDialog(context, state),
+            onBreakdownTap: (kind) {
+              switch (kind) {
+                case IncomeBreakdownKind.debts:
+                  onViewDebts();
+                case IncomeBreakdownKind.apartados:
+                  onViewApartados();
+                case IncomeBreakdownKind.savings:
+                  onViewPlan();
+              }
+            },
           ),
           const SizedBox(height: 14),
           SalaryDistributionChart(
@@ -608,18 +621,20 @@ class DashboardOverview {
 
   factory DashboardOverview.fromState(FinanceState state) {
     final monthlyIncome = state.monthlyIncome;
-    const debts = 17098.25;
-    const apartados = 7649.22;
-    const saving = 8999.08;
+    final debts = state.totalMonthlyCardPayments;
+    final apartados = state.totalAllocated + state.totalMonthlyExtras;
     final plannedSurplus = state.availableAfterMonthlyPlan;
     final allocation = state.surplusPlan.allocation(plannedSurplus);
+    final saving = allocation.safetyNet + allocation.investment;
+    final freeUse = allocation.freeUse;
 
     return DashboardOverview(
       monthlyIncome: monthlyIncome,
-      realAvailableToSpend: plannedSurplus,
+      realAvailableToSpend: freeUse,
       monthLabel: _monthLabel(DateTime.now()),
       incomeBreakdown: [
         IncomeBreakdownItem(
+          kind: IncomeBreakdownKind.debts,
           label: 'Deudas',
           amount: debts,
           percent: _percent(debts, monthlyIncome).round(),
@@ -627,6 +642,7 @@ class DashboardOverview {
           icon: Icons.account_balance_wallet_outlined,
         ),
         IncomeBreakdownItem(
+          kind: IncomeBreakdownKind.apartados,
           label: 'Apartados',
           amount: apartados,
           percent: _percent(apartados, monthlyIncome).round(),
@@ -634,6 +650,7 @@ class DashboardOverview {
           icon: Icons.inventory_2_outlined,
         ),
         IncomeBreakdownItem(
+          kind: IncomeBreakdownKind.savings,
           label: 'Ahorro / inversion',
           amount: saving,
           percent: _percent(saving, monthlyIncome).round(),
@@ -665,10 +682,10 @@ class DashboardOverview {
         ),
         DistributionSlice(
           label: 'Te queda libre',
-          amount: plannedSurplus,
+          amount: freeUse,
           color: DashboardScreen._freeColor,
           icon: Icons.wallet_outlined,
-          percent: _percent(plannedSurplus, monthlyIncome),
+          percent: _percent(freeUse, monthlyIncome),
         ),
       ],
       metrics: [
@@ -695,8 +712,8 @@ class DashboardOverview {
         ),
         SummaryMetric(
           title: 'Sobrante planeado',
-          amount: plannedSurplus,
-          percent: _percent(plannedSurplus, monthlyIncome),
+          amount: freeUse,
+          percent: _percent(freeUse, monthlyIncome),
           color: DashboardScreen._freeColor,
           icon: Icons.account_balance_wallet_outlined,
         ),
@@ -727,9 +744,7 @@ class DashboardOverview {
       debtAndApartadoItems: [
         ...state.creditCards.map((card) {
           final progress = card.creditLimit > 0
-              ? (card.usedBalance / card.creditLimit)
-                  .clamp(0.0, 1.0)
-                  .toDouble()
+              ? (card.usedBalance / card.creditLimit).clamp(0.0, 1.0).toDouble()
               : 0.0;
 
           return DebtApartadoItem(
@@ -824,8 +839,11 @@ class DistributionSlice {
   final IconData icon;
 }
 
+enum IncomeBreakdownKind { debts, apartados, savings }
+
 class IncomeBreakdownItem {
   const IncomeBreakdownItem({
+    required this.kind,
     required this.label,
     required this.amount,
     required this.percent,
@@ -833,6 +851,7 @@ class IncomeBreakdownItem {
     required this.icon,
   });
 
+  final IncomeBreakdownKind kind;
   final String label;
   final double amount;
   final int percent;
@@ -908,6 +927,7 @@ class IncomeHeroCard extends StatelessWidget {
     required this.monthLabel,
     required this.breakdown,
     required this.onEdit,
+    required this.onBreakdownTap,
     super.key,
   });
 
@@ -916,6 +936,7 @@ class IncomeHeroCard extends StatelessWidget {
   final String monthLabel;
   final List<IncomeBreakdownItem> breakdown;
   final VoidCallback onEdit;
+  final ValueChanged<IncomeBreakdownKind> onBreakdownTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1142,7 +1163,10 @@ class IncomeHeroCard extends StatelessWidget {
             children: breakdown.map((item) {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: _IncomeBreakdownRow(item: item),
+                child: _IncomeBreakdownRow(
+                  item: item,
+                  onTap: () => onBreakdownTap(item.kind),
+                ),
               );
             }).toList(),
           ),
@@ -1153,56 +1177,65 @@ class IncomeHeroCard extends StatelessWidget {
 }
 
 class _IncomeBreakdownRow extends StatelessWidget {
-  const _IncomeBreakdownRow({required this.item});
+  const _IncomeBreakdownRow({required this.item, required this.onTap});
 
   final IncomeBreakdownItem item;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
 
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white.withAlpha(12),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        key: ValueKey('income-breakdown-${item.kind.name}'),
+        onTap: onTap,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withAlpha(28)),
-      ),
-      child: Row(
-        children: [
-          AppIconBubble(icon: item.icon, color: item.color, size: 56),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.label,
-                  style: textTheme.titleMedium?.copyWith(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  CurrencyFormatter.format(item.amount),
-                  style: textTheme.titleMedium?.copyWith(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${item.percent}% de tu ingreso',
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
+        child: Ink(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white.withAlpha(12),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: Colors.white.withAlpha(28)),
           ),
-          const Icon(Icons.chevron_right, color: AppColors.textPrimary),
-        ],
+          child: Row(
+            children: [
+              AppIconBubble(icon: item.icon, color: item.color, size: 56),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.label,
+                      style: textTheme.titleMedium?.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      CurrencyFormatter.format(item.amount),
+                      style: textTheme.titleMedium?.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${item.percent}% de tu ingreso',
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: AppColors.textPrimary),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1438,7 +1471,8 @@ class _SummaryMetricGrid extends StatelessWidget {
       builder: (context, constraints) {
         final columns = constraints.maxWidth >= 720 ? 4 : 2;
         const gap = 12.0;
-        final itemWidth = (constraints.maxWidth - gap * (columns - 1)) / columns;
+        final itemWidth =
+            (constraints.maxWidth - gap * (columns - 1)) / columns;
 
         return Wrap(
           spacing: gap,
@@ -1984,7 +2018,13 @@ class _DonutChartPainter extends CustomPainter {
         ..strokeCap = StrokeCap.round
         ..color = slice.color;
 
-      canvas.drawArc(rect, startAngle, math.max(0, sweep - 0.035), false, paint);
+      canvas.drawArc(
+        rect,
+        startAngle,
+        math.max(0, sweep - 0.035),
+        false,
+        paint,
+      );
       startAngle += sweep;
     }
   }

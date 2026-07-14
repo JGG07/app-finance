@@ -2,48 +2,106 @@ import 'package:app_finance/src/core/state/finance_state.dart';
 import 'package:app_finance/src/core/utils/currency_converter.dart';
 import 'package:app_finance/src/features/budgets/domain/monthly_extra.dart';
 import 'package:app_finance/src/features/dashboard/domain/surplus_plan.dart';
+import 'package:app_finance/src/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:app_finance/src/features/transactions/domain/transaction_entry.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('calculates available income from payroll and budget sections', () {
+  test('starts without personal finance data', () {
     final state = FinanceState();
 
-    expect(state.monthlyIncome, 44995.39);
-    expect(state.totalAllocated, 7800);
-    expect(state.availableIncome, closeTo(37195.39, 0.001));
+    expect(state.monthlyIncome, 0);
+    expect(state.categories, isEmpty);
+    expect(state.transactions, isEmpty);
+    expect(state.creditCards, isEmpty);
+    expect(state.monthlyExtras, isEmpty);
+    expect(state.monthlyFinancialTasks, isEmpty);
+  });
+
+  test('dashboard summary starts with every amount at zero', () {
+    final dashboard = DashboardOverview.fromState(FinanceState());
+
+    expect(dashboard.monthlyIncome, 0);
+    expect(dashboard.realAvailableToSpend, 0);
+    expect(
+      dashboard.incomeBreakdown.map((item) => item.amount),
+      everyElement(0),
+    );
+    expect(
+      dashboard.distribution.map((slice) => slice.amount),
+      everyElement(0),
+    );
+  });
+
+  test('calculates available income from user data', () {
+    final state = FinanceState();
 
     state.updateMonthlyIncome(25000);
+    state.addCategory('Comida', 5000, Colors.green);
+    state.addCategory('Transporte', 2800, Colors.red);
 
     expect(state.availableIncome, 17200);
   });
 
+  test('adds the first credit card from user data', () {
+    final state = FinanceState();
+
+    state.addCreditCard(
+      name: 'Tarjeta principal',
+      creditLimit: 25000,
+      usedBalance: 1500,
+      statementCutDay: 12,
+    );
+
+    expect(state.creditCards, hasLength(1));
+    expect(state.creditCards.single.name, 'Tarjeta principal');
+    expect(state.creditCards.single.creditLimit, 25000);
+    expect(state.creditCards.single.usedBalance, 1500);
+    expect(state.creditCards.single.statementCutDay, 12);
+  });
+
   test('calculates monthly plan from fixed budget and card payments', () {
     final state = FinanceState();
+    state.updateMonthlyIncome(40000);
+    state.addCategory('Comida', 5000, Colors.green);
+    state.addCategory('Transporte', 2800, Colors.red);
+    state.addMonthlyExtra(
+      name: 'Apartado',
+      amount: 3800,
+      status: MonthlyExtraStatus.reserved,
+      includedInPlan: true,
+    );
+    state.addCreditCard(
+      name: 'Tarjeta principal',
+      creditLimit: 20000,
+      usedBalance: 5000,
+      statementCutDay: 10,
+    );
 
     expect(state.totalAllocated, 7800);
     expect(state.totalMonthlyExtras, 3800);
-    expect(state.totalMonthlyCardPayments, closeTo(16339.42, 0.001));
-    expect(state.totalPlannedExpenses, closeTo(27939.42, 0.001));
-    expect(state.totalPendingPlannedExpenses, closeTo(26139.42, 0.001));
-    expect(state.availableAfterMonthlyPlan, closeTo(17055.97, 0.001));
-
-    state.updateMonthlyIncome(86938.27);
-
-    expect(state.availableAfterMonthlyPlan, closeTo(58998.85, 0.001));
+    expect(state.totalMonthlyCardPayments, 5000);
+    expect(state.totalPlannedExpenses, 16600);
+    expect(state.availableAfterMonthlyPlan, 23400);
   });
 
   test('manual card payment overrides confirmed and estimated amounts', () {
     final state = FinanceState();
+    state.addCreditCard(
+      name: 'Tarjeta principal',
+      creditLimit: 20000,
+      usedBalance: 5000,
+      statementCutDay: 10,
+    );
+    final cardId = state.creditCards.single.id;
 
-    expect(state.cardMonthlyPaymentAmount('card-dorada'), 14578.60);
+    expect(state.cardMonthlyPaymentAmount(cardId), 5000);
 
-    state.updateCardMonthlyPayment('card-dorada', 11406.42);
+    state.updateCardMonthlyPayment(cardId, 3000);
 
-    expect(state.cardMonthlyPaymentAmount('card-dorada'), 11406.42);
-    expect(state.totalMonthlyCardPayments, closeTo(13167.24, 0.001));
-    expect(state.totalPlannedExpenses, closeTo(24767.24, 0.001));
+    expect(state.cardMonthlyPaymentAmount(cardId), 3000);
+    expect(state.totalMonthlyCardPayments, 3000);
   });
 
   test('monthly extras are included in plan without affecting categories', () {
@@ -56,23 +114,21 @@ void main() {
       includedInPlan: true,
     );
 
-    expect(state.totalAllocated, 7800);
-    expect(state.totalMonthlyExtras, 4300);
-    expect(state.totalPlannedExpenses, closeTo(28439.42, 0.001));
+    expect(state.totalAllocated, 0);
+    expect(state.totalMonthlyExtras, 500);
+    expect(state.totalPlannedExpenses, 500);
   });
 
   test('calculates real estimated surplus and balanced distribution', () {
     final state = FinanceState();
 
-    expect(state.realEstimatedSurplus, closeTo(17055.97, 0.001));
-
     state.updateMonthlyIncome(40000);
 
-    expect(state.realEstimatedSurplus, closeTo(12060.58, 0.001));
+    expect(state.realEstimatedSurplus, 40000);
     expect(state.surplusPlan.type, SurplusPlanType.balanced);
-    expect(state.surplusPlanAllocation.safetyNet, closeTo(4824.232, 0.001));
-    expect(state.surplusPlanAllocation.investment, closeTo(4824.232, 0.001));
-    expect(state.surplusPlanAllocation.freeUse, closeTo(2412.116, 0.001));
+    expect(state.surplusPlanAllocation.safetyNet, 16000);
+    expect(state.surplusPlanAllocation.investment, 16000);
+    expect(state.surplusPlanAllocation.freeUse, 8000);
   });
 
   test('manual surplus plan amounts override automatic distribution', () {
@@ -98,12 +154,21 @@ void main() {
 
   test('tracks credit card payments and installment purchases', () {
     final state = FinanceState();
+    state.addCreditCard(
+      name: 'Tarjeta principal',
+      creditLimit: 25000,
+      usedBalance: 5000,
+      statementCutDay: 10,
+    );
     final card = state.creditCards.first;
     final initialBalance = card.usedBalance;
 
     state.addCreditCardPayment(card.id, 1000);
 
-    expect(state.creditCards.first.usedBalance, closeTo(initialBalance - 1000, 0.001));
+    expect(
+      state.creditCards.first.usedBalance,
+      closeTo(initialBalance - 1000, 0.001),
+    );
 
     state.addCreditCardPurchase(
       cardId: card.id,
@@ -136,9 +201,16 @@ void main() {
 
   test('uses card statement cut day to count paid installments', () {
     final state = FinanceState();
+    state.addCreditCard(
+      name: 'Tarjeta principal',
+      creditLimit: 25000,
+      usedBalance: 0,
+      statementCutDay: 19,
+    );
+    final cardId = state.creditCards.single.id;
 
     state.addCreditCardPurchase(
-      cardId: 'card-dorada',
+      cardId: cardId,
       title: 'Amazon',
       amount: 7200,
       installments: 12,
@@ -172,6 +244,12 @@ void main() {
 
   test('validates installment purchases and separates completed purchases', () {
     final state = FinanceState();
+    state.addCreditCard(
+      name: 'Tarjeta principal',
+      creditLimit: 25000,
+      usedBalance: 0,
+      statementCutDay: 10,
+    );
     final card = state.creditCards.first;
     final initialPurchaseCount = state.creditCardPurchases.length;
     final initialCardPayment = state.cardMonthlyPaymentAmount(card.id);
@@ -234,7 +312,7 @@ void main() {
     });
 
     expect(category.spent, 1500);
-    expect(state.totalSpent, 1844);
+    expect(state.totalSpent, 1500);
 
     state.deleteTransaction(state.transactions.first.id);
 
@@ -243,5 +321,45 @@ void main() {
     });
 
     expect(updatedCategory.spent, 0);
+  });
+
+  test('renaming a category updates its existing movement labels', () {
+    final state = FinanceState();
+
+    state.addCategory('Comida', 3000, Colors.green);
+    final category = state.categories.single;
+    state.addTransaction(
+      title: 'Supermercado',
+      amount: 800,
+      categoryTitle: category.title,
+      type: TransactionType.expense,
+      date: DateTime(2026, 7, 14),
+    );
+
+    state.updateCategory(category.id, title: 'Despensa');
+
+    expect(state.categories.single.title, 'Despensa');
+    expect(state.transactions.single.category, 'Despensa');
+    expect(state.categories.single.spent, 800);
+  });
+
+  test('deleting a category preserves existing movements', () {
+    final state = FinanceState();
+
+    state.addCategory('Transporte', 1000, Colors.blue);
+    final category = state.categories.single;
+    state.addTransaction(
+      title: 'Taxi',
+      amount: 250,
+      categoryTitle: category.title,
+      type: TransactionType.expense,
+      date: DateTime(2026, 7, 14),
+    );
+
+    state.deleteCategory(category.id);
+
+    expect(state.categories, isEmpty);
+    expect(state.transactions.single.category, 'Transporte');
+    expect(state.totalSpent, 250);
   });
 }

@@ -22,6 +22,8 @@ class _AppRouterState extends State<AppRouter> {
   Widget build(BuildContext context) {
     final screens = <Widget>[
       DashboardScreen(
+        onViewDebts: () => setState(() => _selectedIndex = 3),
+        onViewApartados: () => setState(() => _selectedIndex = 2),
         onViewPlan: () => setState(() => _selectedIndex = 4),
       ),
       const TransactionsScreen(),
