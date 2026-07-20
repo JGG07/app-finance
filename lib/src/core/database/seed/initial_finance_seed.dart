@@ -1,8 +1,10 @@
 import '../../../features/dashboard/domain/surplus_plan.dart';
 import '../finance_snapshot.dart';
 
-FinanceSnapshot initialFinanceSeed() {
-  return const FinanceSnapshot(
+FinanceSnapshot initialFinanceSeed({
+  SurplusPlanType planType = SurplusPlanType.unconfigured,
+}) {
+  return FinanceSnapshot(
     monthlyIncome: 0,
     categories: [],
     transactions: [],
@@ -12,7 +14,7 @@ FinanceSnapshot initialFinanceSeed() {
     subscriptions: [],
     cardMonthlyPayments: [],
     monthlyExtras: [],
-    surplusPlan: SurplusPlan(type: SurplusPlanType.balanced),
+    surplusPlan: SurplusPlan(type: planType),
     manualTasks: [],
     taskOverrides: {},
   );

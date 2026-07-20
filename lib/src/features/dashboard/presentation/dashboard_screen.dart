@@ -517,6 +517,8 @@ class DashboardScreen extends StatelessWidget {
           IncomeHeroCard(
             amount: dashboard.monthlyIncome,
             availableAmount: dashboard.realAvailableToSpend,
+            antExpenseAmount: dashboard.antExpenseAmount,
+            antExpensePercent: dashboard.antExpensePercent,
             monthLabel: dashboard.monthLabel,
             breakdown: dashboard.incomeBreakdown,
             onEdit: () => _showEditIncomeDialog(context, state),
@@ -588,6 +590,8 @@ class DashboardScreen extends StatelessWidget {
 
   static String _surplusPlanLabel(SurplusPlanType plan) {
     return switch (plan) {
+      SurplusPlanType.unconfigured => 'Sin configurar',
+      SurplusPlanType.none => 'Sin plan',
       SurplusPlanType.conservative => 'Conservador',
       SurplusPlanType.balanced => 'Balanceado',
       SurplusPlanType.investment => 'Inversion',
@@ -600,6 +604,8 @@ class DashboardOverview {
   const DashboardOverview({
     required this.monthlyIncome,
     required this.realAvailableToSpend,
+    required this.antExpenseAmount,
+    required this.antExpensePercent,
     required this.monthLabel,
     required this.incomeBreakdown,
     required this.distribution,
@@ -611,6 +617,8 @@ class DashboardOverview {
 
   final double monthlyIncome;
   final double realAvailableToSpend;
+  final double antExpenseAmount;
+  final double antExpensePercent;
   final String monthLabel;
   final List<IncomeBreakdownItem> incomeBreakdown;
   final List<DistributionSlice> distribution;
@@ -626,12 +634,21 @@ class DashboardOverview {
     final plannedSurplus = state.availableAfterMonthlyPlan;
     final allocation = state.surplusPlan.allocation(plannedSurplus);
     final saving = allocation.safetyNet + allocation.investment;
-    final freeUse = allocation.freeUse;
+    final freeUse = state.totalFree;
+    final antExpenseLimit = state.antExpenseLimit;
+    final antExpenseProgress = antExpenseLimit > 0
+        ? state.antExpenseSpent / antExpenseLimit
+        : state.antExpenseSpent > 0
+            ? 1.0
+            : 0.0;
+    final antExpenseColor = _antExpenseColor(antExpenseProgress);
 
     return DashboardOverview(
       monthlyIncome: monthlyIncome,
       realAvailableToSpend: freeUse,
-      monthLabel: _monthLabel(DateTime.now()),
+      antExpenseAmount: state.antExpenseSpent,
+      antExpensePercent: state.antExpensePercentOfFree,
+      monthLabel: state.selectedPeriod.label,
       incomeBreakdown: [
         IncomeBreakdownItem(
           kind: IncomeBreakdownKind.debts,
@@ -704,11 +721,18 @@ class DashboardOverview {
           icon: Icons.event_note_outlined,
         ),
         SummaryMetric(
-          title: 'Gastado este mes',
+          title: 'Utilizado este mes',
           amount: state.totalSpent,
           percent: _percent(state.totalSpent, monthlyIncome),
           color: DashboardScreen._expenseColor,
           icon: Icons.trending_down,
+        ),
+        SummaryMetric(
+          title: 'Gasto Hormiga',
+          amount: state.antExpenseSpent,
+          percent: _percent(state.antExpenseSpent, antExpenseLimit),
+          color: antExpenseColor,
+          icon: Icons.pest_control_outlined,
         ),
         SummaryMetric(
           title: 'Sobrante planeado',
@@ -734,8 +758,8 @@ class DashboardOverview {
           icon: Icons.show_chart,
         ),
         SurplusPlanItem(
-          label: 'Uso libre',
-          amount: allocation.freeUse,
+          label: 'Libre del mes',
+          amount: freeUse,
           percent: 20,
           color: DashboardScreen._freeColor,
           icon: Icons.local_atm_outlined,
@@ -784,30 +808,28 @@ class DashboardOverview {
   }
 
   static double _percent(double value, double total) {
-    if (total <= 0) {
+    if (!value.isFinite || !total.isFinite || value <= 0 || total <= 0) {
       return 0;
     }
 
     return value / total * 100;
   }
 
-  static String _monthLabel(DateTime date) {
-    const months = [
-      'Enero',
-      'Febrero',
-      'Marzo',
-      'Abril',
-      'Mayo',
-      'Junio',
-      'Julio',
-      'Agosto',
-      'Septiembre',
-      'Octubre',
-      'Noviembre',
-      'Diciembre',
-    ];
-
-    return '${months[date.month - 1]} ${date.year}';
+  static Color _antExpenseColor(double progress) {
+    if (progress <= 0.5) {
+      return Color.lerp(
+            DashboardScreen._green,
+            DashboardScreen._expenseColor,
+            (progress / 0.5).clamp(0.0, 1.0),
+          ) ??
+          DashboardScreen._green;
+    }
+    return Color.lerp(
+          DashboardScreen._expenseColor,
+          AppColors.danger,
+          ((progress - 0.5) / 0.5).clamp(0.0, 1.0),
+        ) ??
+        AppColors.danger;
   }
 
   static String _cardSummaryTitle(String name) {
@@ -924,6 +946,8 @@ class IncomeHeroCard extends StatelessWidget {
   const IncomeHeroCard({
     required this.amount,
     required this.availableAmount,
+    required this.antExpenseAmount,
+    required this.antExpensePercent,
     required this.monthLabel,
     required this.breakdown,
     required this.onEdit,
@@ -933,6 +957,8 @@ class IncomeHeroCard extends StatelessWidget {
 
   final double amount;
   final double availableAmount;
+  final double antExpenseAmount;
+  final double antExpensePercent;
   final String monthLabel;
   final List<IncomeBreakdownItem> breakdown;
   final VoidCallback onEdit;
@@ -1069,7 +1095,7 @@ class IncomeHeroCard extends StatelessWidget {
                           fontWeight: FontWeight.w900,
                         ),
                       ),
-                      StatusPill(
+                      const StatusPill(
                         label: 'Libre para gastar',
                         color: AppColors.primary,
                       ),
@@ -1094,6 +1120,44 @@ class IncomeHeroCard extends StatelessWidget {
                     style: textTheme.titleMedium?.copyWith(
                       color: AppColors.textSecondary,
                       fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.pending.withAlpha(18),
+                      borderRadius: BorderRadius.circular(AppRadii.md),
+                      border: Border.all(
+                        color: AppColors.pending.withAlpha(70),
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(
+                          Icons.pest_control_outlined,
+                          color: AppColors.pending,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'En gastos hormiga has gastado '
+                            '${CurrencyFormatter.format(antExpenseAmount)}, '
+                            'equivalente al '
+                            '${_formatPercent(antExpensePercent)}% de tu dinero libre.',
+                            style: textTheme.bodyMedium?.copyWith(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w600,
+                              height: 1.35,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -1173,6 +1237,14 @@ class IncomeHeroCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  static String _formatPercent(double value) {
+    if (!value.isFinite || value <= 0) {
+      return '0';
+    }
+    final fixed = value.toStringAsFixed(2);
+    return fixed.replaceFirst(RegExp(r'\.?0+$'), '');
   }
 }
 

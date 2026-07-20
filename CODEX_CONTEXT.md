@@ -112,6 +112,65 @@ pruebas disponibles.
 
 ## Registro de avances
 
+### 2026-07-20 - Dinero libre y eleccion inicial del plan
+
+- El dinero libre ahora parte del ingreso mensual menos presupuesto, apartados
+  incluidos en el plan y pagos mensuales de tarjetas.
+- La distribucion del plan de excedente se calcula sobre ese sobrante planeado,
+  no sobre el sobrante real reducido por movimientos ya registrados.
+- `Total libre` y `Te queda libre este mes` usan la porcion de uso libre del
+  plan. Por ello, ahorro e inversion reducen el indicador cuando existe un plan.
+- Se agregaron los estados persistibles `unconfigured` y `none` al plan de
+  excedente. Un usuario nuevo debe elegir entre un plan balanceado o continuar
+  sin plan antes de entrar a la aplicacion.
+- Al elegir continuar sin plan, el 100% del sobrante planeado queda como dinero
+  libre y no se generan tareas de ahorro, inversion ni separacion de uso libre.
+- Los planes ya persistidos se conservan; el flujo inicial solo aparece para
+  instalaciones nuevas cuyo plan esta `unconfigured`.
+- Las 30 pruebas pasaron. El analisis estatico termino sin errores, con 10
+  avisos informativos por APIs de Flutter deprecadas y estilo preexistente.
+
+### 2026-07-20 - Separacion de presupuesto, libre y gastos hormiga
+
+- Se centralizo en `FinanceState` la clasificacion de egresos: los movimientos
+  cuyo nombre de categoria coincide con una categoria editable son gastos
+  presupuestados; los demas son gastos hormiga. Los ingresos quedan excluidos.
+- Los movimientos historicos cuya categoria ya no existe se consideran gasto
+  hormiga, conservando compatibilidad con el esquema actual basado en nombres.
+- Presupuesto ahora muestra exactamente Total presupuestado, Total utilizado,
+  Total libre y Total gasto hormiga, con una cuadricula adaptable.
+- Total libre se calcula como ingreso mensual total menos las partidas
+  presupuestadas y no se reduce por el gasto ya realizado.
+- Movimientos muestra `Gastos` como la suma de todos los egresos.
+- Resumen muestra el total y porcentaje de gastos hormiga respecto del dinero
+  libre, con proteccion explicita contra divisiones entre cero.
+- Los porcentajes fijos de Resumen rapido en Plan se reemplazaron por calculos
+  reales de deudas, utilizacion de presupuesto y ahorro. Todos devuelven cero
+  cuando su denominador no es positivo.
+- Se agregaron casos para los escenarios sin datos, solo presupuesto, gasto
+  presupuestado, gasto hormiga, movimientos historicos e ingreso libre en cero.
+  Las 29 pruebas pasaron y el analisis estatico termino sin errores, con 9
+  avisos informativos preexistentes.
+
+### 2026-07-20 - Presupuesto y control de Gasto Hormiga
+
+- Presupuesto permite modificar nombre, limite y color de cada categoria, asi
+  como eliminarla desde su tarjeta.
+- Se agrego la categoria protegida `Gasto Hormiga`, disponible desde el primer
+  arranque y no editable ni eliminable desde Presupuesto o Movimientos.
+- Su limite se calcula desde la asignacion `Libre del Mes`; los movimientos de
+  esta categoria reducen el dinero libre mostrado sin duplicar el monto dentro
+  de los gastos planeados.
+- La tarjeta cambia gradualmente de verde a naranja y rojo conforme aumenta el
+  porcentaje utilizado.
+- Presupuesto muestra primero Total presupuestado, Utilizado y Disponible.
+- El Resumen incluye una metrica de Gasto Hormiga y muestra el libre restante
+  despues de esos consumos.
+- Se reemplazo la etiqueta Gastado por Utilizado en los resumenes afectados.
+- Se agregaron pruebas de proteccion, calculos y presencia en el dashboard. Las
+  26 pruebas pasaron; el analisis estatico no reporto errores y mantuvo solo los
+  avisos informativos preexistentes de APIs de Flutter deprecadas.
+
 ### 2026-07-14 - Gestion de categorias desde Movimientos
 
 - El formulario de nuevo movimiento ya no inventa la categoria `General` cuando

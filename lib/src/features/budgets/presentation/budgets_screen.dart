@@ -176,65 +176,120 @@ class BudgetsScreen extends StatelessWidget {
     FinanceState state,
     BudgetCategory category,
   ) {
+    final titleController = TextEditingController(text: category.title);
     final limitController = TextEditingController(
       text: category.limit.toStringAsFixed(0),
     );
     final formKey = GlobalKey<FormState>();
+    var selectedColor = category.color;
 
     showDialog<void>(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: Text('Editar limite: ${category.title}'),
-          content: Form(
-            key: formKey,
-            child: TextFormField(
-              controller: limitController,
-              autofocus: true,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Nuevo limite de dinero',
-                prefixText: r'$ ',
-                border: OutlineInputBorder(),
-              ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Ingresa un limite';
-                }
-
-                final number = double.tryParse(value);
-                if (number == null || number <= 0) {
-                  return 'Ingresa un numero positivo valido';
-                }
-
-                return null;
-              },
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancelar'),
-            ),
-            FilledButton(
-              onPressed: () {
-                if (formKey.currentState?.validate() ?? false) {
-                  state.updateCategory(
-                    category.id,
-                    limit: double.parse(limitController.text),
-                  );
-                  Navigator.of(context).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Seccion "${category.title}" actualizada'),
-                      behavior: SnackBarBehavior.floating,
+        return StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            title: Text('Editar categoria: ${category.title}'),
+            content: SingleChildScrollView(
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextFormField(
+                      controller: titleController,
+                      autofocus: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Nombre de la categoria',
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (value) {
+                        final title = value?.trim() ?? '';
+                        if (title.isEmpty) {
+                          return 'Ingresa un nombre';
+                        }
+                        final exists = state.categories.any((item) {
+                          return item.id != category.id &&
+                              item.title.toLowerCase() == title.toLowerCase();
+                        });
+                        return exists ? 'Esta categoria ya existe' : null;
+                      },
                     ),
-                  );
-                }
-              },
-              child: const Text('Guardar'),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: limitController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Limite de dinero',
+                        prefixText: r'$ ',
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (value) {
+                        final number = double.tryParse(value?.trim() ?? '');
+                        return number == null || number <= 0
+                            ? 'Ingresa un numero positivo valido'
+                            : null;
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'Color visual',
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _curatedColors.map((colorMap) {
+                        final color = colorMap['color'] as Color;
+                        return InkWell(
+                          onTap: () =>
+                              setDialogState(() => selectedColor = color),
+                          borderRadius: BorderRadius.circular(20),
+                          child: CircleAvatar(
+                            backgroundColor: color,
+                            child: selectedColor == color
+                                ? const Icon(Icons.check, color: Colors.white)
+                                : null,
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ],
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  if (formKey.currentState?.validate() ?? false) {
+                    state.updateCategory(
+                      category.id,
+                      title: titleController.text.trim(),
+                      limit: double.parse(limitController.text.trim()),
+                      color: selectedColor,
+                    );
+                    Navigator.of(context).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Categoria "${titleController.text.trim()}" actualizada',
+                        ),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                },
+                child: const Text('Guardar'),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -418,14 +473,14 @@ class BudgetsScreen extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.lg),
         _BudgetSummaryCard(
-          total: state.totalAllocated,
-          spent: state.totalSpent,
-          available: state.totalAllocated - state.totalSpent,
+          total: state.totalBudgeted,
+          spent: state.totalBudgetSpentForSelectedPeriod,
+          available: state.totalBudgetAvailableForSelectedPeriod,
         ),
         const SizedBox(height: AppSpacing.lg),
         AppSectionHeader(
           title: 'Categorias',
-          subtitle: 'Limite, gastado y disponible por seccion.',
+          subtitle: 'Limite, gastos y disponible por categoria.',
           action: AppButton(
             label: 'Nueva',
             icon: Icons.add,
@@ -442,6 +497,9 @@ class BudgetsScreen extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: AppSpacing.md),
               child: _BudgetProgressCard(
                 category: category,
+                spent: category.isProtected
+                    ? state.antExpenseSpent
+                    : state.spentForCategoryInSelectedPeriod(category),
                 onEdit: () {
                   _showEditCategoryDialog(context, state, category);
                 },
@@ -541,7 +599,7 @@ class _EmptyBudgetList extends StatelessWidget {
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w800,
-              ),
+                  ),
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
@@ -549,7 +607,7 @@ class _EmptyBudgetList extends StatelessWidget {
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppColors.textSecondary,
-              ),
+                  ),
             ),
           ],
         ),
@@ -573,7 +631,7 @@ class _BudgetSummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= 640;
+        final isWide = constraints.maxWidth >= 760;
         final cards = [
           StatCard(
             title: 'Total presupuestado',
@@ -582,7 +640,7 @@ class _BudgetSummaryCard extends StatelessWidget {
             color: AppColors.apartado,
           ),
           StatCard(
-            title: 'Gastado',
+            title: 'Gastos',
             value: CurrencyFormatter.format(spent),
             icon: Icons.trending_down,
             color: AppColors.debt,
@@ -591,26 +649,20 @@ class _BudgetSummaryCard extends StatelessWidget {
             title: 'Disponible',
             value: CurrencyFormatter.format(available),
             icon: Icons.account_balance_wallet_outlined,
-            color: available < 0 ? AppColors.danger : AppColors.primary,
+            color: AppColors.primary,
           ),
         ];
 
         if (!isWide) {
           const gap = AppSpacing.md;
-          final itemWidth = (constraints.maxWidth - gap) / 2;
-
-          return Column(
-            children: [
-              Row(
-                children: [
-                  SizedBox(width: itemWidth, child: cards[0]),
-                  const SizedBox(width: gap),
-                  SizedBox(width: itemWidth, child: cards[1]),
-                ],
-              ),
-              const SizedBox(height: gap),
-              SizedBox(width: double.infinity, child: cards[2]),
-            ],
+          return GridView.count(
+            crossAxisCount: 2,
+            crossAxisSpacing: gap,
+            mainAxisSpacing: gap,
+            childAspectRatio: constraints.maxWidth < 390 ? 1.05 : 1.25,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            children: cards,
           );
         }
 
@@ -630,11 +682,13 @@ class _BudgetSummaryCard extends StatelessWidget {
 class _BudgetProgressCard extends StatelessWidget {
   const _BudgetProgressCard({
     required this.category,
+    required this.spent,
     required this.onEdit,
     required this.onDelete,
   });
 
   final BudgetCategory category;
+  final double spent;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
@@ -642,13 +696,22 @@ class _BudgetProgressCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final colorScheme = Theme.of(context).colorScheme;
-    final progress = category.limit > 0
-        ? (category.spent / category.limit).clamp(0.0, 1.0)
-        : 0.0;
-    final isExceeded = category.spent > category.limit;
-    final displayPercent = category.limit > 0
-        ? ((category.spent / category.limit) * 100).round()
-        : 0;
+    final progress =
+        category.limit > 0 ? (spent / category.limit).clamp(0.0, 1.0) : 0.0;
+    final isExceeded = spent > category.limit;
+    final displayPercent =
+        category.limit > 0 ? ((spent / category.limit) * 100).round() : 0;
+    final progressColor = category.isProtected
+        ? _antExpenseColor(
+            category.limit > 0
+                ? spent / category.limit
+                : spent > 0
+                    ? 1
+                    : 0,
+          )
+        : isExceeded
+            ? AppColors.danger
+            : category.color;
 
     return AppCard(
       child: Padding(
@@ -663,8 +726,10 @@ class _BudgetProgressCard extends StatelessWidget {
                   child: Row(
                     children: [
                       AppIconBubble(
-                        icon: Icons.folder_outlined,
-                        color: category.color,
+                        icon: category.isProtected
+                            ? Icons.pest_control_outlined
+                            : Icons.folder_outlined,
+                        color: progressColor,
                       ),
                       const SizedBox(width: AppSpacing.md),
                       Expanded(
@@ -679,47 +744,53 @@ class _BudgetProgressCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert, size: 20),
-                  padding: EdgeInsets.zero,
-                  onSelected: (value) {
-                    if (value == 'edit') {
-                      onEdit();
-                    }
-                    if (value == 'delete') {
-                      onDelete();
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'edit',
-                      child: Row(
-                        children: [
-                          Icon(Icons.edit_outlined, size: 18),
-                          SizedBox(width: 8),
-                          Text('Editar limite'),
-                        ],
+                if (category.isProtected)
+                  const StatusPill(
+                    label: 'Protegida',
+                    color: AppColors.primary,
+                  )
+                else
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert, size: 20),
+                    padding: EdgeInsets.zero,
+                    onSelected: (value) {
+                      if (value == 'edit') {
+                        onEdit();
+                      }
+                      if (value == 'delete') {
+                        onDelete();
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit_outlined, size: 18),
+                            SizedBox(width: 8),
+                            Text('Editar categoria'),
+                          ],
+                        ),
                       ),
-                    ),
-                    PopupMenuItem(
-                      value: 'delete',
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.delete_outline,
-                            color: colorScheme.error,
-                            size: 18,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Eliminar seccion',
-                            style: TextStyle(color: colorScheme.error),
-                          ),
-                        ],
+                      PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.delete_outline,
+                              color: colorScheme.error,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Eliminar seccion',
+                              style: TextStyle(color: colorScheme.error),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
               ],
             ),
             const SizedBox(height: 12),
@@ -727,7 +798,7 @@ class _BudgetProgressCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '${CurrencyFormatter.format(category.spent)} gastado',
+                  '${CurrencyFormatter.format(spent)} gastado',
                   style: textTheme.bodyMedium?.copyWith(
                     color:
                         isExceeded ? colorScheme.error : colorScheme.onSurface,
@@ -748,7 +819,7 @@ class _BudgetProgressCard extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: progress,
                 minHeight: 12,
-                color: isExceeded ? AppColors.danger : category.color,
+                color: progressColor,
                 backgroundColor: AppColors.surfaceSoft,
               ),
             ),
@@ -759,8 +830,8 @@ class _BudgetProgressCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     isExceeded
-                        ? 'Limite excedido por ${CurrencyFormatter.format(category.spent - category.limit)}'
-                        : 'Disponible: ${CurrencyFormatter.format(category.limit - category.spent)}',
+                        ? 'Limite excedido por ${CurrencyFormatter.format(spent - category.limit)}'
+                        : 'Disponible: ${CurrencyFormatter.format(category.limit - spent)}',
                     style: textTheme.bodySmall?.copyWith(
                       color: isExceeded
                           ? colorScheme.error
@@ -784,6 +855,23 @@ class _BudgetProgressCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  static Color _antExpenseColor(double progress) {
+    if (progress <= 0.5) {
+      return Color.lerp(
+            AppColors.primary,
+            AppColors.pending,
+            (progress / 0.5).clamp(0.0, 1.0),
+          ) ??
+          AppColors.primary;
+    }
+    return Color.lerp(
+          AppColors.pending,
+          AppColors.danger,
+          ((progress - 0.5) / 0.5).clamp(0.0, 1.0),
+        ) ??
+        AppColors.danger;
   }
 }
 

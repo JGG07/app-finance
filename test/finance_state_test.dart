@@ -1,6 +1,8 @@
+import 'package:app_finance/src/core/domain/finance_period.dart';
 import 'package:app_finance/src/core/state/finance_state.dart';
 import 'package:app_finance/src/core/utils/currency_converter.dart';
 import 'package:app_finance/src/features/budgets/domain/monthly_extra.dart';
+import 'package:app_finance/src/features/budgets/domain/budget_category.dart';
 import 'package:app_finance/src/features/dashboard/domain/surplus_plan.dart';
 import 'package:app_finance/src/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:app_finance/src/features/transactions/domain/transaction_entry.dart';
@@ -12,11 +14,14 @@ void main() {
     final state = FinanceState();
 
     expect(state.monthlyIncome, 0);
-    expect(state.categories, isEmpty);
+    expect(state.categories, hasLength(1));
+    expect(state.categories.single.title, BudgetCategory.antExpenseTitle);
+    expect(state.categories.single.isProtected, isTrue);
     expect(state.transactions, isEmpty);
     expect(state.creditCards, isEmpty);
     expect(state.monthlyExtras, isEmpty);
     expect(state.monthlyFinancialTasks, isEmpty);
+    expect(state.surplusPlan.type, SurplusPlanType.unconfigured);
   });
 
   test('dashboard summary starts with every amount at zero', () {
@@ -24,6 +29,8 @@ void main() {
 
     expect(dashboard.monthlyIncome, 0);
     expect(dashboard.realAvailableToSpend, 0);
+    expect(dashboard.antExpenseAmount, 0);
+    expect(dashboard.antExpensePercent, 0);
     expect(
       dashboard.incomeBreakdown.map((item) => item.amount),
       everyElement(0),
@@ -32,6 +39,15 @@ void main() {
       dashboard.distribution.map((slice) => slice.amount),
       everyElement(0),
     );
+    final state = FinanceState();
+    expect(state.totalBudgeted, 0);
+    expect(state.totalBudgetUtilized, 0);
+    expect(state.totalFree, 0);
+    expect(state.antExpenseSpent, 0);
+    expect(state.totalExpenses, 0);
+    expect(state.budgetUtilizationPercent, 0);
+    expect(state.debtPaymentPercentOfIncome, 0);
+    expect(state.savingPercentOfSurplus, 0);
   });
 
   test('calculates available income from user data', () {
@@ -42,6 +58,128 @@ void main() {
     state.addCategory('Transporte', 2800, Colors.red);
 
     expect(state.availableIncome, 17200);
+  });
+
+  test('separates budgeted expenses, ant expenses, free money and totals', () {
+    final state = FinanceState();
+    state.selectPeriod(FinancePeriod(year: 2026, month: 7));
+    state.updateMonthlyIncome(10000);
+    state.addCategory('Psicologa', 2000, Colors.purple);
+
+    expect(state.totalBudgeted, 2000);
+    expect(state.totalBudgetUtilized, 0);
+    expect(state.totalFree, 8000);
+    expect(state.antExpenseSpent, 0);
+    expect(state.totalExpenses, 0);
+
+    state.addTransaction(
+      title: 'Consulta',
+      amount: 500,
+      categoryTitle: 'Psicologa',
+      type: TransactionType.expense,
+      date: DateTime(2026, 7, 20),
+    );
+    expect(state.totalBudgetUtilized, 500);
+
+    state.addTransaction(
+      title: 'Cafe',
+      amount: 100,
+      categoryTitle: BudgetCategory.antExpenseTitle,
+      type: TransactionType.expense,
+      date: DateTime(2026, 7, 20),
+    );
+
+    expect(state.totalBudgeted, 2000);
+    expect(state.totalBudgetUtilized, 500);
+    expect(state.totalFree, 8000);
+    expect(state.antExpenseSpent, 100);
+    expect(state.totalExpenses, 600);
+    expect(
+      state.totalExpenses,
+      state.totalBudgetUtilized + state.antExpenseSpent,
+    );
+    expect(state.antExpensePercentOfFree, 1.25);
+  });
+
+  test('treats legacy unmatched expenses as ant expenses, never income', () {
+    final state = FinanceState();
+    state.selectPeriod(FinancePeriod(year: 2026, month: 7));
+    state.updateMonthlyIncome(10000);
+    state.addCategory('Internet', 500, Colors.blue);
+
+    state.addTransaction(
+      title: 'Compra antigua',
+      amount: 125,
+      categoryTitle: 'Categoria eliminada',
+      type: TransactionType.expense,
+      date: DateTime(2026, 7, 20),
+    );
+    state.addTransaction(
+      title: 'Venta',
+      amount: 300,
+      categoryTitle: 'Sin categoria',
+      type: TransactionType.income,
+      date: DateTime(2026, 7, 20),
+    );
+
+    expect(state.totalBudgetUtilized, 0);
+    expect(state.antExpenseSpent, 125);
+    expect(state.totalExpenses, 125);
+  });
+
+  test('returns zero ant percentage when free money is zero', () {
+    final state = FinanceState();
+    state.selectPeriod(FinancePeriod(year: 2026, month: 7));
+    state.addTransaction(
+      title: 'Cafe',
+      amount: 100,
+      categoryTitle: BudgetCategory.antExpenseTitle,
+      type: TransactionType.expense,
+      date: DateTime(2026, 7, 20),
+    );
+
+    expect(state.totalFree, 0);
+    expect(state.antExpenseSpent, 100);
+    expect(state.antExpensePercentOfFree, 0);
+  });
+
+  test('keeps the ant expense category protected', () {
+    final state = FinanceState();
+
+    state.updateCategory(
+      BudgetCategory.antExpenseId,
+      title: 'Otro nombre',
+      limit: 999,
+      color: Colors.black,
+    );
+    state.deleteCategory(BudgetCategory.antExpenseId);
+
+    expect(state.categories.single.title, BudgetCategory.antExpenseTitle);
+    expect(state.categories.single.limit, 0);
+  });
+
+  test('dashboard includes ant expenses and total free money', () {
+    final state = FinanceState();
+    state.selectPeriod(FinancePeriod(year: 2026, month: 7));
+    state.updateMonthlyIncome(10000);
+    state.addCategory('Psicologa', 2000, Colors.purple);
+    state.addTransaction(
+      title: 'Snack',
+      amount: 100,
+      categoryTitle: BudgetCategory.antExpenseTitle,
+      type: TransactionType.expense,
+      date: DateTime(2026, 7, 20),
+    );
+
+    final dashboard = DashboardOverview.fromState(state);
+    final antMetric = dashboard.metrics.singleWhere(
+      (metric) => metric.title == BudgetCategory.antExpenseTitle,
+    );
+
+    expect(antMetric.amount, 100);
+    expect(dashboard.realAvailableToSpend, 8000);
+    expect(dashboard.antExpenseAmount, 100);
+    expect(dashboard.antExpensePercent, 1.25);
   });
 
   test('adds the first credit card from user data', () {
@@ -84,6 +222,14 @@ void main() {
     expect(state.totalMonthlyCardPayments, 5000);
     expect(state.totalPlannedExpenses, 16600);
     expect(state.availableAfterMonthlyPlan, 23400);
+    expect(state.totalFree, 23400);
+
+    state.updateSurplusPlan(SurplusPlanType.balanced);
+
+    expect(state.surplusPlanAllocation.safetyNet, 9360);
+    expect(state.surplusPlanAllocation.investment, 9360);
+    expect(state.surplusPlanAllocation.freeUse, 4680);
+    expect(state.totalFree, 4680);
   });
 
   test('manual card payment overrides confirmed and estimated amounts', () {
@@ -123,6 +269,7 @@ void main() {
     final state = FinanceState();
 
     state.updateMonthlyIncome(40000);
+    state.updateSurplusPlan(SurplusPlanType.balanced);
 
     expect(state.realEstimatedSurplus, 40000);
     expect(state.surplusPlan.type, SurplusPlanType.balanced);
@@ -297,6 +444,7 @@ void main() {
 
   test('adding and deleting expense updates category spent amount', () {
     final state = FinanceState();
+    state.selectPeriod(FinancePeriod(year: 2026, month: 5));
 
     state.addCategory('Psicologa', 3000, Colors.purple);
     state.addTransaction(
@@ -327,7 +475,9 @@ void main() {
     final state = FinanceState();
 
     state.addCategory('Comida', 3000, Colors.green);
-    final category = state.categories.single;
+    final category = state.categories.singleWhere(
+      (category) => !category.isProtected,
+    );
     state.addTransaction(
       title: 'Supermercado',
       amount: 800,
@@ -338,16 +488,25 @@ void main() {
 
     state.updateCategory(category.id, title: 'Despensa');
 
-    expect(state.categories.single.title, 'Despensa');
+    expect(
+      state.categories.singleWhere((category) => !category.isProtected).title,
+      'Despensa',
+    );
     expect(state.transactions.single.category, 'Despensa');
-    expect(state.categories.single.spent, 800);
+    expect(
+      state.categories.singleWhere((category) => !category.isProtected).spent,
+      800,
+    );
   });
 
   test('deleting a category preserves existing movements', () {
     final state = FinanceState();
+    state.selectPeriod(FinancePeriod(year: 2026, month: 7));
 
     state.addCategory('Transporte', 1000, Colors.blue);
-    final category = state.categories.single;
+    final category = state.categories.singleWhere(
+      (category) => !category.isProtected,
+    );
     state.addTransaction(
       title: 'Taxi',
       amount: 250,
@@ -358,7 +517,8 @@ void main() {
 
     state.deleteCategory(category.id);
 
-    expect(state.categories, isEmpty);
+    expect(state.categories, hasLength(1));
+    expect(state.categories.single.isProtected, isTrue);
     expect(state.transactions.single.category, 'Transporte');
     expect(state.totalSpent, 250);
   });

@@ -440,55 +440,66 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                   ? 'Presupuesto: ${CurrencyFormatter.format(category.limit)}'
                                   : 'Sin presupuesto definido',
                             ),
-                            trailing: PopupMenuButton<String>(
-                              onSelected: (action) async {
-                                if (action == 'edit') {
-                                  await _showCategoryEditorDialog(
-                                    context,
-                                    state,
-                                    category: category,
-                                  );
-                                } else {
-                                  final confirmed = await showDialog<bool>(
-                                    context: context,
-                                    builder: (context) => AlertDialog(
-                                      title: const Text('Eliminar categoria'),
-                                      content: Text(
-                                        'Se eliminara "${category.title}". '
-                                        'Los movimientos existentes conservaran '
-                                        'su nombre en el historial.',
+                            trailing: category.isProtected
+                                ? const Tooltip(
+                                    message:
+                                        'Esta categoria no se puede modificar ni eliminar',
+                                    child: Icon(Icons.lock_outline),
+                                  )
+                                : PopupMenuButton<String>(
+                                    onSelected: (action) async {
+                                      if (action == 'edit') {
+                                        await _showCategoryEditorDialog(
+                                          context,
+                                          state,
+                                          category: category,
+                                        );
+                                      } else {
+                                        final confirmed =
+                                            await showDialog<bool>(
+                                          context: context,
+                                          builder: (context) => AlertDialog(
+                                            title: const Text(
+                                              'Eliminar categoria',
+                                            ),
+                                            content: Text(
+                                              'Se eliminara "${category.title}". '
+                                              'Los movimientos existentes conservaran '
+                                              'su nombre en el historial.',
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () =>
+                                                    Navigator.of(context)
+                                                        .pop(false),
+                                                child: const Text('Cancelar'),
+                                              ),
+                                              TextButton(
+                                                onPressed: () =>
+                                                    Navigator.of(context)
+                                                        .pop(true),
+                                                child: const Text('Eliminar'),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                        if (confirmed == true) {
+                                          state.deleteCategory(category.id);
+                                        }
+                                      }
+                                      setDialogState(() {});
+                                    },
+                                    itemBuilder: (context) => const [
+                                      PopupMenuItem(
+                                        value: 'edit',
+                                        child: Text('Editar'),
                                       ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.of(context).pop(false),
-                                          child: const Text('Cancelar'),
-                                        ),
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.of(context).pop(true),
-                                          child: const Text('Eliminar'),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                  if (confirmed == true) {
-                                    state.deleteCategory(category.id);
-                                  }
-                                }
-                                setDialogState(() {});
-                              },
-                              itemBuilder: (context) => const [
-                                PopupMenuItem(
-                                  value: 'edit',
-                                  child: Text('Editar'),
-                                ),
-                                PopupMenuItem(
-                                  value: 'delete',
-                                  child: Text('Eliminar'),
-                                ),
-                              ],
-                            ),
+                                      PopupMenuItem(
+                                        value: 'delete',
+                                        child: Text('Eliminar'),
+                                      ),
+                                    ],
+                                  ),
                           );
                         },
                       ),
@@ -518,7 +529,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   Widget build(BuildContext context) {
     final state = FinanceStateProvider.of(context);
     final transactions = _filteredTransactions(state);
-    final monthIncome = state.transactions
+    final monthIncome = state.transactionsForSelectedPeriod
         .where((transaction) => transaction.type == TransactionType.income)
         .fold<double>(0, (sum, transaction) => sum + transaction.amount);
 
@@ -535,9 +546,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         ),
         const SizedBox(height: AppSpacing.lg),
         _TransactionsSummary(
-          spent: state.totalSpent,
+          spent: state.totalExpenses,
           income: monthIncome,
-          count: state.transactions.length,
+          count: state.transactionsForSelectedPeriod.length,
         ),
         const SizedBox(height: AppSpacing.lg),
         _FilterPills(
@@ -564,7 +575,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   }
 
   List<TransactionEntry> _filteredTransactions(FinanceState state) {
-    return state.transactions.where((transaction) {
+    return state.transactionsForSelectedPeriod.where((transaction) {
       final category = transaction.category.toLowerCase();
 
       return switch (_filter) {
@@ -676,7 +687,7 @@ class _TransactionsSummary extends StatelessWidget {
       builder: (context, constraints) {
         final cards = [
           StatCard(
-            title: 'Gastado',
+            title: 'Gastos',
             value: CurrencyFormatter.format(spent),
             icon: Icons.trending_down,
             color: AppColors.debt,

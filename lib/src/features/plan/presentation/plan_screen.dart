@@ -24,7 +24,9 @@ class PlanScreen extends StatelessWidget {
               title: const Text('Cambiar plan'),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
-                children: SurplusPlanType.values.map((plan) {
+                children: SurplusPlanType.values
+                    .where((plan) => plan != SurplusPlanType.unconfigured)
+                    .map((plan) {
                   return RadioListTile<SurplusPlanType>(
                     contentPadding: EdgeInsets.zero,
                     title: Text(_planLabel(plan)),
@@ -323,9 +325,7 @@ class PlanScreen extends StatelessWidget {
           onToggleTask: (task, isDone) {
             state.updateFinancialTaskStatus(
               task.id,
-              isDone
-                  ? FinancialTaskStatus.done
-                  : FinancialTaskStatus.pending,
+              isDone ? FinancialTaskStatus.done : FinancialTaskStatus.pending,
             );
           },
           onStatusSelected: (task, status) {
@@ -339,9 +339,9 @@ class PlanScreen extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.lg),
         _PlanQuickSummary(
-          debtPercent: 38,
-          apartadoPercent: 17,
-          savingPercent: 20,
+          debtPercent: state.debtPaymentPercentOfIncome.round(),
+          apartadoPercent: state.budgetUtilizationPercent.round(),
+          savingPercent: state.savingPercentOfSurplus.round(),
         ),
         const SizedBox(height: AppSpacing.lg),
         Wrap(
@@ -366,6 +366,8 @@ class PlanScreen extends StatelessWidget {
 
   static String _planLabel(SurplusPlanType plan) {
     return switch (plan) {
+      SurplusPlanType.unconfigured => 'Sin configurar',
+      SurplusPlanType.none => 'Sin plan',
       SurplusPlanType.conservative => 'Conservador',
       SurplusPlanType.balanced => 'Balanceado',
       SurplusPlanType.investment => 'Inversion',
@@ -375,6 +377,8 @@ class PlanScreen extends StatelessWidget {
 
   static String _planDescription(SurplusPlanType plan) {
     return switch (plan) {
+      SurplusPlanType.unconfigured => 'Elige como organizar tu sobrante',
+      SurplusPlanType.none => 'Todo el sobrante permanece como dinero libre',
       SurplusPlanType.conservative => '60% colchon, 25% inversion, 15% libre',
       SurplusPlanType.balanced => '40% colchon, 40% inversion, 20% libre',
       SurplusPlanType.investment => '20% colchon, 65% inversion, 15% libre',
@@ -487,7 +491,8 @@ class _PlanHeroCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: AppColors.primary.withAlpha(22),
                       borderRadius: BorderRadius.circular(22),
-                      border: Border.all(color: AppColors.primary.withAlpha(45)),
+                      border:
+                          Border.all(color: AppColors.primary.withAlpha(45)),
                     ),
                     child: const Icon(
                       Icons.account_balance_wallet_outlined,
@@ -565,7 +570,8 @@ class _PlanHeroCard extends StatelessWidget {
                             Container(
                               width: 1,
                               height: 56,
-                              margin: const EdgeInsets.symmetric(horizontal: 16),
+                              margin:
+                                  const EdgeInsets.symmetric(horizontal: 16),
                               color: AppColors.border,
                             ),
                           Expanded(child: items[index]),

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 class BudgetCategory {
+  static const antExpenseId = 'system-ant-expense';
+  static const antExpenseTitle = 'Gasto Hormiga';
+
   const BudgetCategory({
     required this.id,
     required this.title,
@@ -14,6 +17,8 @@ class BudgetCategory {
   final double limit;
   final double spent;
   final Color color;
+
+  bool get isProtected => id == antExpenseId;
 
   BudgetCategory copyWith({
     String? title,

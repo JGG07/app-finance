@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../database/finance_snapshot.dart';
 import '../database/repositories/finance_repository.dart';
 import '../database/seed/initial_finance_seed.dart';
+import '../domain/finance_period.dart';
 import '../../features/budgets/domain/budget_category.dart';
 import '../../features/budgets/domain/monthly_extra.dart';
 import '../../features/cards/domain/credit_card.dart';
@@ -43,6 +44,7 @@ class FinanceState extends ChangeNotifier {
   bool _isDisposed = false;
   String? _loadError;
   String? _saveError;
+  FinancePeriod _selectedPeriod = FinancePeriod.current();
 
   bool get isLoading => _isLoading;
   bool get isInitialized => _isInitialized;
@@ -50,8 +52,29 @@ class FinanceState extends ChangeNotifier {
   String? get loadError => _loadError;
   String? get saveError => _saveError;
   double get monthlyIncome => _monthlyIncome;
-  List<BudgetCategory> get categories => List.unmodifiable(_categories);
+  FinancePeriod get selectedPeriod => _selectedPeriod;
+  List<BudgetCategory> get categories => List.unmodifiable(
+        _categories.map((category) {
+          if (category.isProtected) {
+            return category.copyWith(
+              limit: antExpenseLimit,
+              spent: antExpenseSpent,
+            );
+          }
+          final categoryTitle = _normalizeCategoryName(category.title);
+          final utilized = _transactions.where((transaction) {
+            return transaction.type == TransactionType.expense &&
+                _normalizeCategoryName(transaction.category) == categoryTitle;
+          }).fold(0.0, (sum, transaction) => sum + transaction.amount);
+          return category.copyWith(spent: utilized);
+        }),
+      );
   List<TransactionEntry> get transactions => List.unmodifiable(_transactions);
+  List<TransactionEntry> get transactionsForSelectedPeriod => List.unmodifiable(
+        _transactions.where(
+          (transaction) => _selectedPeriod.contains(transaction.date),
+        ),
+      );
   List<PlannedExpense> get plannedExpenses =>
       List.unmodifiable(_plannedExpenses);
   List<CreditCard> get creditCards => List.unmodifiable(_creditCards);
@@ -158,7 +181,77 @@ class FinanceState extends ChangeNotifier {
   }
 
   double get totalAllocated {
-    return _categories.fold(0, (sum, category) => sum + category.limit);
+    return _categories.where((category) => !category.isProtected).fold(
+          0,
+          (sum, category) => sum + category.limit,
+        );
+  }
+
+  double get antExpenseSpent {
+    return transactionsForSelectedPeriod.where(_isAntExpense).fold(
+          0,
+          (sum, transaction) => sum + transaction.amount,
+        );
+  }
+
+  double get antExpenseLimit => totalFree;
+
+  double get freeUseAvailable => totalFree;
+
+  double get totalBudgeted => totalAllocated;
+
+  double spentForCategoryInSelectedPeriod(BudgetCategory category) {
+    if (category.isProtected) {
+      return 0;
+    }
+
+    final categoryName = _normalizeCategoryName(category.title);
+    return transactionsForSelectedPeriod.where((transaction) {
+      return transaction.type == TransactionType.expense &&
+          _normalizeCategoryName(transaction.category) == categoryName;
+    }).fold(0, (sum, transaction) => sum + transaction.amount);
+  }
+
+  double availableForCategoryInSelectedPeriod(BudgetCategory category) {
+    return category.limit - spentForCategoryInSelectedPeriod(category);
+  }
+
+  double get totalBudgetSpentForSelectedPeriod {
+    return transactionsForSelectedPeriod.where(_isBudgetedExpense).fold(
+          0,
+          (sum, transaction) => sum + transaction.amount,
+        );
+  }
+
+  double get totalBudgetAvailableForSelectedPeriod {
+    return totalBudgeted - totalBudgetSpentForSelectedPeriod;
+  }
+
+  double get totalBudgetUtilized => totalBudgetSpentForSelectedPeriod;
+
+  double get totalFree {
+    final free = surplusPlanAllocation.freeUse;
+    return free > 0 ? free : 0;
+  }
+
+  double get antExpensePercentOfFree {
+    return _safePercentage(antExpenseSpent, totalFree);
+  }
+
+  double get budgetUtilizationPercent {
+    return _safePercentage(totalBudgetUtilized, totalBudgeted);
+  }
+
+  double get debtPaymentPercentOfIncome {
+    return _safePercentage(totalMonthlyCardPayments, totalMonthlyIncome);
+  }
+
+  double get savingPercentOfSurplus {
+    final allocation = surplusPlanAllocation;
+    return _safePercentage(
+      allocation.safetyNet + allocation.investment,
+      realEstimatedSurplus,
+    );
   }
 
   double get availableIncome => _monthlyIncome - totalAllocated;
@@ -182,20 +275,13 @@ class FinanceState extends ChangeNotifier {
   }
 
   double get additionalIncludedIncome {
-    return _transactions
+    return transactionsForSelectedPeriod
         .where((transaction) => transaction.type == TransactionType.income)
         .fold(0, (sum, transaction) => sum + transaction.amount);
   }
 
   double get unplannedRegisteredExpenses {
-    final categoryTitles = _categories.map((category) {
-      return category.title.toLowerCase();
-    }).toSet();
-
-    return _transactions.where((transaction) {
-      return transaction.type == TransactionType.expense &&
-          !categoryTitles.contains(transaction.category.toLowerCase());
-    }).fold(0, (sum, transaction) => sum + transaction.amount);
+    return antExpenseSpent;
   }
 
   double get realEstimatedSurplus {
@@ -205,7 +291,7 @@ class FinanceState extends ChangeNotifier {
   }
 
   SurplusPlanAllocation get surplusPlanAllocation {
-    return _surplusPlan.allocation(realEstimatedSurplus);
+    return _surplusPlan.allocation(availableAfterMonthlyPlan);
   }
 
   double get totalMonthlyCardPayments {
@@ -221,9 +307,48 @@ class FinanceState extends ChangeNotifier {
   }
 
   double get totalSpent {
-    return _transactions
+    return transactionsForSelectedPeriod
         .where((transaction) => transaction.type == TransactionType.expense)
         .fold(0, (sum, transaction) => sum + transaction.amount);
+  }
+
+  double get totalExpenses => totalSpent;
+
+  void selectPeriod(FinancePeriod period) {
+    if (_selectedPeriod == period) {
+      return;
+    }
+
+    _selectedPeriod = period;
+    _notifyIfActive();
+  }
+
+  bool _isBudgetedExpense(TransactionEntry transaction) {
+    if (transaction.type != TransactionType.expense) {
+      return false;
+    }
+
+    final transactionCategory = _normalizeCategoryName(transaction.category);
+    return _categories.any((category) {
+      return !category.isProtected &&
+          _normalizeCategoryName(category.title) == transactionCategory;
+    });
+  }
+
+  bool _isAntExpense(TransactionEntry transaction) {
+    return transaction.type == TransactionType.expense &&
+        !_isBudgetedExpense(transaction);
+  }
+
+  // BudgetCategory.spent is retained for database compatibility, but monthly
+  // budget figures are derived from transactionsForSelectedPeriod instead.
+  String _normalizeCategoryName(String name) => name.trim().toLowerCase();
+
+  double _safePercentage(double value, double total) {
+    if (!value.isFinite || !total.isFinite || value <= 0 || total <= 0) {
+      return 0;
+    }
+    return value / total * 100;
   }
 
   double get totalCreditCardDebt {
@@ -299,39 +424,42 @@ class FinanceState extends ChangeNotifier {
           createdAt: createdAt,
         );
       }),
-      FinancialTask(
-        id: 'surplus-safety-net',
-        title: 'Guardar en colchon',
-        amount: allocation.safetyNet,
-        type: FinancialTaskType.saving,
-        status: FinancialTaskStatus.pending,
-        dueDate: dueDate,
-        sourceId: 'safety-net',
-        sourceType: FinancialTaskSourceType.surplusPlan,
-        createdAt: createdAt,
-      ),
-      FinancialTask(
-        id: 'surplus-investment',
-        title: 'Invertir en CETES',
-        amount: allocation.investment,
-        type: FinancialTaskType.investment,
-        status: FinancialTaskStatus.pending,
-        dueDate: dueDate,
-        sourceId: 'investment',
-        sourceType: FinancialTaskSourceType.surplusPlan,
-        createdAt: createdAt,
-      ),
-      FinancialTask(
-        id: 'surplus-free-use',
-        title: 'Separar uso libre',
-        amount: allocation.freeUse,
-        type: FinancialTaskType.freeUse,
-        status: FinancialTaskStatus.pending,
-        dueDate: dueDate,
-        sourceId: 'free-use',
-        sourceType: FinancialTaskSourceType.surplusPlan,
-        createdAt: createdAt,
-      ),
+      if (_surplusPlan.type != SurplusPlanType.none &&
+          _surplusPlan.type != SurplusPlanType.unconfigured) ...[
+        FinancialTask(
+          id: 'surplus-safety-net',
+          title: 'Guardar en colchon',
+          amount: allocation.safetyNet,
+          type: FinancialTaskType.saving,
+          status: FinancialTaskStatus.pending,
+          dueDate: dueDate,
+          sourceId: 'safety-net',
+          sourceType: FinancialTaskSourceType.surplusPlan,
+          createdAt: createdAt,
+        ),
+        FinancialTask(
+          id: 'surplus-investment',
+          title: 'Invertir en CETES',
+          amount: allocation.investment,
+          type: FinancialTaskType.investment,
+          status: FinancialTaskStatus.pending,
+          dueDate: dueDate,
+          sourceId: 'investment',
+          sourceType: FinancialTaskSourceType.surplusPlan,
+          createdAt: createdAt,
+        ),
+        FinancialTask(
+          id: 'surplus-free-use',
+          title: 'Separar uso libre',
+          amount: allocation.freeUse,
+          type: FinancialTaskType.freeUse,
+          status: FinancialTaskStatus.pending,
+          dueDate: dueDate,
+          sourceId: 'free-use',
+          sourceType: FinancialTaskSourceType.surplusPlan,
+          createdAt: createdAt,
+        ),
+      ],
     ].where((task) => task.amount > 0).toList(growable: false);
   }
 
@@ -669,6 +797,10 @@ class FinanceState extends ChangeNotifier {
       return;
     }
 
+    if (_categories[index].isProtected) {
+      return;
+    }
+
     final previousTitle = _categories[index].title;
     final nextTitle = title?.trim();
     _categories[index] = _categories[index].copyWith(
@@ -699,6 +831,9 @@ class FinanceState extends ChangeNotifier {
   }
 
   void deleteCategory(String id) {
+    if (id == BudgetCategory.antExpenseId) {
+      return;
+    }
     _categories.removeWhere((category) => category.id == id);
     _persistAndNotify();
   }
@@ -1054,8 +1189,9 @@ class FinanceState extends ChangeNotifier {
   }
 
   void _addSpentToCategory(String title, double amount) {
+    final normalizedTitle = _normalizeCategoryName(title);
     final index = _categories.indexWhere((category) {
-      return category.title.toLowerCase() == title.toLowerCase();
+      return _normalizeCategoryName(category.title) == normalizedTitle;
     });
 
     if (index == -1) {
@@ -1104,6 +1240,7 @@ class FinanceState extends ChangeNotifier {
   void _applySnapshot(FinanceSnapshot snapshot) {
     _monthlyIncome = snapshot.monthlyIncome;
     _categories = List.of(snapshot.categories);
+    _ensureAntExpenseCategory();
     _transactions = List.of(snapshot.transactions);
     _plannedExpenses = List.of(snapshot.plannedExpenses);
     _creditCards = List.of(snapshot.creditCards);
@@ -1114,6 +1251,41 @@ class FinanceState extends ChangeNotifier {
     _surplusPlan = snapshot.surplusPlan;
     _manualTasks = List.of(snapshot.manualTasks);
     _taskOverrides = Map.of(snapshot.taskOverrides);
+  }
+
+  void _ensureAntExpenseCategory() {
+    final index = _categories.indexWhere((category) {
+      return category.id == BudgetCategory.antExpenseId ||
+          _normalizeCategoryName(category.title) ==
+              _normalizeCategoryName(BudgetCategory.antExpenseTitle);
+    });
+
+    if (index == -1) {
+      _categories.add(
+        const BudgetCategory(
+          id: BudgetCategory.antExpenseId,
+          title: BudgetCategory.antExpenseTitle,
+          limit: 0,
+          color: Color(0xFF1B7F5C),
+        ),
+      );
+      return;
+    }
+
+    final existing = _categories[index];
+    _categories[index] = BudgetCategory(
+      id: BudgetCategory.antExpenseId,
+      title: BudgetCategory.antExpenseTitle,
+      limit: 0,
+      spent: existing.spent,
+      color: const Color(0xFF1B7F5C),
+    );
+
+    _categories.removeWhere((category) {
+      return category.id != BudgetCategory.antExpenseId &&
+          _normalizeCategoryName(category.title) ==
+              _normalizeCategoryName(BudgetCategory.antExpenseTitle);
+    });
   }
 
   FinanceSnapshot _snapshot() {

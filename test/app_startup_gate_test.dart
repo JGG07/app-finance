@@ -6,6 +6,7 @@ import 'package:app_finance/src/core/database/repositories/finance_repository.da
 import 'package:app_finance/src/core/database/seed/initial_finance_seed.dart';
 import 'package:app_finance/src/core/state/finance_state.dart';
 import 'package:app_finance/src/core/theme/app_theme.dart';
+import 'package:app_finance/src/features/dashboard/domain/surplus_plan.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -52,7 +53,9 @@ void main() {
     expect(find.text('Cargando tus finanzas'), findsOneWidget);
     expect(find.text('Contenido principal'), findsNothing);
 
-    load.complete(initialFinanceSeed());
+    load.complete(
+      initialFinanceSeed(planType: SurplusPlanType.none),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Cargando tus finanzas'), findsNothing);
@@ -89,7 +92,9 @@ void main() {
     expect(find.text('Cargando tus finanzas'), findsOneWidget);
     expect(find.text('Contenido principal'), findsNothing);
 
-    retry.complete(initialFinanceSeed());
+    retry.complete(
+      initialFinanceSeed(planType: SurplusPlanType.none),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Contenido principal'), findsOneWidget);
@@ -102,7 +107,7 @@ void main() {
     final savedSnapshots = <FinanceSnapshot>[];
     final state = FinanceState(
       repository: _FakeFinanceStorage(
-        () async => initialFinanceSeed(),
+        () async => initialFinanceSeed(planType: SurplusPlanType.none),
         onSave: (snapshot) async {
           saveAttempts++;
           if (saveAttempts == 1) {
@@ -132,6 +137,23 @@ void main() {
     expect(savedSnapshots.single.monthlyIncome, 25000);
     expect(state.saveError, isNull);
     expect(find.text('No pudimos guardar tus cambios'), findsNothing);
+    expect(find.text('Contenido principal'), findsOneWidget);
+  });
+
+  testWidgets('asks for a savings plan on first launch and saves the choice', (
+    tester,
+  ) async {
+    final state = FinanceState();
+
+    await tester.pumpWidget(_TestApp(state: state));
+
+    expect(find.text('Como quieres organizar tu dinero?'), findsOneWidget);
+    expect(find.text('Contenido principal'), findsNothing);
+
+    await tester.tap(find.text('Prefiero continuar sin plan'));
+    await tester.pumpAndSettle();
+
+    expect(state.surplusPlan.type, SurplusPlanType.none);
     expect(find.text('Contenido principal'), findsOneWidget);
   });
 }

@@ -1,4 +1,6 @@
 enum SurplusPlanType {
+  unconfigured,
+  none,
   conservative,
   balanced,
   investment,
@@ -48,6 +50,8 @@ class SurplusPlan {
     }
 
     final percentages = switch (type) {
+      SurplusPlanType.unconfigured => (0.0, 0.0, 1.0),
+      SurplusPlanType.none => (0.0, 0.0, 1.0),
       SurplusPlanType.conservative => (0.60, 0.25, 0.15),
       SurplusPlanType.balanced => (0.40, 0.40, 0.20),
       SurplusPlanType.investment => (0.20, 0.65, 0.15),
@@ -75,7 +79,8 @@ class SurplusPlan {
           clearManualAmounts ? null : manualSafetyNet ?? this.manualSafetyNet,
       manualInvestment:
           clearManualAmounts ? null : manualInvestment ?? this.manualInvestment,
-      manualFreeUse: clearManualAmounts ? null : manualFreeUse ?? this.manualFreeUse,
+      manualFreeUse:
+          clearManualAmounts ? null : manualFreeUse ?? this.manualFreeUse,
     );
   }
 }
