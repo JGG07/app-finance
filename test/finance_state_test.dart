@@ -91,7 +91,7 @@ void main() {
 
     expect(state.totalBudgeted, 2000);
     expect(state.totalBudgetUtilized, 500);
-    expect(state.totalFree, 8000);
+    expect(state.totalFree, 7900);
     expect(state.antExpenseSpent, 100);
     expect(state.totalExpenses, 600);
     expect(
@@ -138,7 +138,7 @@ void main() {
       date: DateTime(2026, 7, 20),
     );
 
-    expect(state.totalFree, 0);
+    expect(state.totalFree, -100);
     expect(state.antExpenseSpent, 100);
     expect(state.antExpensePercentOfFree, 0);
   });
@@ -177,7 +177,7 @@ void main() {
     );
 
     expect(antMetric.amount, 100);
-    expect(dashboard.realAvailableToSpend, 8000);
+    expect(dashboard.realAvailableToSpend, 7900);
     expect(dashboard.antExpenseAmount, 100);
     expect(dashboard.antExpensePercent, 1.25);
   });

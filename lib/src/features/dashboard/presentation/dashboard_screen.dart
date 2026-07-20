@@ -634,20 +634,18 @@ class DashboardOverview {
     final plannedSurplus = state.availableAfterMonthlyPlan;
     final allocation = state.surplusPlan.allocation(plannedSurplus);
     final saving = allocation.safetyNet + allocation.investment;
-    final freeUse = state.totalFree;
-    final antExpenseLimit = state.antExpenseLimit;
-    final antExpenseProgress = antExpenseLimit > 0
-        ? state.antExpenseSpent / antExpenseLimit
-        : state.antExpenseSpent > 0
-            ? 1.0
-            : 0.0;
+    final plannedFreeUse = state.freeMoneyBeforeAntExpenses;
+    final availableFreeUse = state.freeMoneyAfterAntExpenses;
+    final antExpenses = state.antExpensesForSelectedPeriod;
+    final antExpensePercent = state.antExpensesPercentOfFreeMoney;
+    final antExpenseProgress = antExpensePercent / 100;
     final antExpenseColor = _antExpenseColor(antExpenseProgress);
 
     return DashboardOverview(
       monthlyIncome: monthlyIncome,
-      realAvailableToSpend: freeUse,
-      antExpenseAmount: state.antExpenseSpent,
-      antExpensePercent: state.antExpensePercentOfFree,
+      realAvailableToSpend: availableFreeUse,
+      antExpenseAmount: antExpenses,
+      antExpensePercent: antExpensePercent,
       monthLabel: state.selectedPeriod.label,
       incomeBreakdown: [
         IncomeBreakdownItem(
@@ -698,11 +696,18 @@ class DashboardOverview {
           percent: _percent(saving, monthlyIncome),
         ),
         DistributionSlice(
+          label: 'Gasto Hormiga',
+          amount: antExpenses,
+          color: antExpenseColor,
+          icon: Icons.pest_control_outlined,
+          percent: _percent(antExpenses, monthlyIncome),
+        ),
+        DistributionSlice(
           label: 'Te queda libre',
-          amount: freeUse,
+          amount: availableFreeUse,
           color: DashboardScreen._freeColor,
           icon: Icons.wallet_outlined,
-          percent: _percent(freeUse, monthlyIncome),
+          percent: _percent(availableFreeUse, monthlyIncome),
         ),
       ],
       metrics: [
@@ -729,15 +734,15 @@ class DashboardOverview {
         ),
         SummaryMetric(
           title: 'Gasto Hormiga',
-          amount: state.antExpenseSpent,
-          percent: _percent(state.antExpenseSpent, antExpenseLimit),
+          amount: antExpenses,
+          percent: antExpensePercent,
           color: antExpenseColor,
           icon: Icons.pest_control_outlined,
         ),
         SummaryMetric(
           title: 'Sobrante planeado',
-          amount: freeUse,
-          percent: _percent(freeUse, monthlyIncome),
+          amount: plannedFreeUse,
+          percent: _percent(plannedFreeUse, monthlyIncome),
           color: DashboardScreen._freeColor,
           icon: Icons.account_balance_wallet_outlined,
         ),
@@ -759,7 +764,7 @@ class DashboardOverview {
         ),
         SurplusPlanItem(
           label: 'Libre del mes',
-          amount: freeUse,
+          amount: plannedFreeUse,
           percent: 20,
           color: DashboardScreen._freeColor,
           icon: Icons.local_atm_outlined,
@@ -1145,16 +1150,30 @@ class IncomeHeroCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 10),
                         Expanded(
-                          child: Text(
-                            'En gastos hormiga has gastado '
-                            '${CurrencyFormatter.format(antExpenseAmount)}, '
-                            'equivalente al '
-                            '${_formatPercent(antExpensePercent)}% de tu dinero libre.',
-                            style: textTheme.bodyMedium?.copyWith(
-                              color: AppColors.textPrimary,
-                              fontWeight: FontWeight.w600,
-                              height: 1.35,
-                            ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'En gastos hormiga has gastado '
+                                '${CurrencyFormatter.format(antExpenseAmount)}',
+                                style: textTheme.bodyMedium?.copyWith(
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.w700,
+                                  height: 1.35,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Representa el '
+                                '${_formatPercent(antExpensePercent)}% '
+                                'de tu dinero libre',
+                                style: textTheme.bodySmall?.copyWith(
+                                  color: AppColors.textSecondary,
+                                  fontWeight: FontWeight.w600,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],

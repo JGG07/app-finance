@@ -187,16 +187,36 @@ class FinanceState extends ChangeNotifier {
         );
   }
 
-  double get antExpenseSpent {
+  /// Temporary classification: selected-period expenses whose normalized
+  /// category name does not match any budgeted category.
+  double get antExpensesForSelectedPeriod {
     return transactionsForSelectedPeriod.where(_isAntExpense).fold(
           0,
           (sum, transaction) => sum + transaction.amount,
         );
   }
 
-  double get antExpenseLimit => totalFree;
+  double get antExpenseSpent => antExpensesForSelectedPeriod;
 
-  double get freeUseAvailable => totalFree;
+  double get freeMoneyBeforeAntExpenses {
+    final free = surplusPlanAllocation.freeUse;
+    return free > 0 ? free : 0;
+  }
+
+  double get freeMoneyAfterAntExpenses {
+    return freeMoneyBeforeAntExpenses - antExpensesForSelectedPeriod;
+  }
+
+  double get antExpensesPercentOfFreeMoney {
+    return _safePercentage(
+      antExpensesForSelectedPeriod,
+      freeMoneyBeforeAntExpenses,
+    );
+  }
+
+  double get antExpenseLimit => freeMoneyBeforeAntExpenses;
+
+  double get freeUseAvailable => freeMoneyAfterAntExpenses;
 
   double get totalBudgeted => totalAllocated;
 
@@ -229,14 +249,9 @@ class FinanceState extends ChangeNotifier {
 
   double get totalBudgetUtilized => totalBudgetSpentForSelectedPeriod;
 
-  double get totalFree {
-    final free = surplusPlanAllocation.freeUse;
-    return free > 0 ? free : 0;
-  }
+  double get totalFree => freeMoneyAfterAntExpenses;
 
-  double get antExpensePercentOfFree {
-    return _safePercentage(antExpenseSpent, totalFree);
-  }
+  double get antExpensePercentOfFree => antExpensesPercentOfFreeMoney;
 
   double get budgetUtilizationPercent {
     return _safePercentage(totalBudgetUtilized, totalBudgeted);
@@ -281,7 +296,7 @@ class FinanceState extends ChangeNotifier {
   }
 
   double get unplannedRegisteredExpenses {
-    return antExpenseSpent;
+    return antExpensesForSelectedPeriod;
   }
 
   double get realEstimatedSurplus {
