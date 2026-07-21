@@ -12,11 +12,26 @@ build/
 
 # Platform generated files
 android/.gradle/
-ios/Flutter/Generated.xcconfig
-ios/Flutter/flutter_export_environment.sh
 ios/Pods/
 ios/Runner.xcworkspace/
 macos/Flutter/ephemeral/
+
+# Local Flutter and Android configuration
+android/local.properties
+
+# Local tooling
+.antigravitycli/
+
+# Generated iOS configuration
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+ios/Flutter/ephemeral/
+
+# Generated Flutter plugin registrants
+android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
+
+# Application builds
+*.apk
 
 # Local files
 *.log
