@@ -17,5 +17,8 @@ FinanceSnapshot initialFinanceSeed({
     surplusPlan: SurplusPlan(type: planType),
     manualTasks: [],
     taskOverrides: {},
+    tandas: [],
+    tandaContributions: [],
+    tandaReceipts: [],
   );
 }

@@ -1,6 +1,8 @@
 import 'package:app_finance/src/app/app.dart';
 import 'package:flutter/material.dart' show Size, TextFormField, ValueKey;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/material.dart'
+    show FilledButton, PopupMenuButton, TextButton;
 
 void main() {
   testWidgets('renders dashboard shell', (tester) async {
@@ -100,6 +102,104 @@ void main() {
 
     expect(find.text('Comida'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('shows tanda section and opens its validated form', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(900, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const AppFinance(enablePersistence: false));
+    await _chooseNoSavingsPlan(tester);
+    await tester.tap(find.text('Plan').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Tandas'), findsOneWidget);
+    expect(find.text('Aun no tienes tandas registradas.'), findsOneWidget);
+    expect(
+      find.textContaining('se agrega automaticamente'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining(
+        'todavia no se registra automaticamente como ingreso',
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('Nueva tanda'));
+    await tester.pumpAndSettle();
+    expect(find.text('Nueva tanda'), findsAtLeastNWidgets(1));
+
+    await tester.tap(find.text('Guardar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Revisa los campos numericos.'), findsOneWidget);
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Nombre'),
+      'Tanda oficina',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Monto por aportacion'),
+      '1000',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Participantes'),
+      '10',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Turno asignado'),
+      '4',
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Recibiras aproximadamente'), findsOneWidget);
+    expect(find.text('Total de aportaciones: 10'), findsOneWidget);
+
+    await tester.tap(find.text('Guardar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Ver aportaciones'), findsOneWidget);
+    expect(find.text('Recepcion de la tanda'), findsOneWidget);
+    expect(find.text('Recepcion pendiente'), findsOneWidget);
+    expect(find.textContaining('Monto esperado:'), findsOneWidget);
+    tester
+        .widget<TextButton>(
+          find.widgetWithText(TextButton, 'Ver aportaciones'),
+        )
+        .onPressed!();
+    await tester.pumpAndSettle();
+    expect(find.text('Aportacion 1 de 10'), findsOneWidget);
+    expect(find.text('Siguiente aportacion'), findsOneWidget);
+    expect(find.text('Pendiente'), findsAtLeastNWidgets(1));
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
+    tester
+        .widget<FilledButton>(
+          find.widgetWithText(FilledButton, 'Registrar aportacion'),
+        )
+        .onPressed!();
+    await tester.pumpAndSettle();
+    tester
+        .widget<TextButton>(
+          find.widgetWithText(TextButton, 'Ver aportaciones'),
+        )
+        .onPressed!();
+    await tester.pumpAndSettle();
+    expect(find.text('Movimiento registrado'), findsOneWidget);
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
+    tester
+        .widget<PopupMenuButton<String>>(
+          find.byType(PopupMenuButton<String>),
+        )
+        .onSelected!('delete');
+    await tester.pumpAndSettle();
+    expect(find.text('Eliminar todo'), findsOneWidget);
+    expect(find.text('Eliminar y conservar movimientos'), findsOneWidget);
+    expect(find.textContaining('ingreso de recepcion'), findsOneWidget);
   });
 }
 

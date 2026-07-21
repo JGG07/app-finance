@@ -8,6 +8,8 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../shared/presentation/app_design.dart';
 import '../../dashboard/domain/surplus_plan.dart';
 import '../../tasks/domain/financial_task.dart';
+import '../../tandas/presentation/tandas_section.dart';
+import '../domain/financial_advice.dart';
 
 class PlanScreen extends StatelessWidget {
   const PlanScreen({super.key});
@@ -249,6 +251,82 @@ class PlanScreen extends StatelessWidget {
     );
   }
 
+  void _showAdviceSheet(BuildContext context, FinanceState state) {
+    final advice = FinancialAdviceGenerator.fromState(state);
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      builder: (context) {
+        return SafeArea(
+          child: FractionallySizedBox(
+            heightFactor: 0.78,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const AppIconBubble(
+                        icon: Icons.lightbulb_outline,
+                        color: AppColors.pending,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Consejos para este periodo',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleLarge
+                                  ?.copyWith(
+                                    color: AppColors.textPrimary,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                            ),
+                            Text(
+                              state.selectedPeriod.label,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Cerrar consejos',
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  Expanded(
+                    child: ListView.separated(
+                      itemCount: advice.length,
+                      separatorBuilder: (_, __) =>
+                          const SizedBox(height: AppSpacing.md),
+                      itemBuilder: (context, index) {
+                        return _FinancialAdviceCard(advice: advice[index]);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = FinanceStateProvider.of(context);
@@ -321,6 +399,7 @@ class PlanScreen extends StatelessWidget {
           tasks: tasks,
           progress: taskProgress,
           onAddTask: () => _showTaskDialog(context, state),
+          onViewAdvice: () => _showAdviceSheet(context, state),
           onEditTask: (task) => _showTaskDialog(context, state, task: task),
           onToggleTask: (task, isDone) {
             state.updateFinancialTaskStatus(
@@ -337,6 +416,8 @@ class PlanScreen extends StatelessWidget {
             state.updateFinancialTaskStatus(task.id, status);
           },
         ),
+        const SizedBox(height: AppSpacing.lg),
+        TandasSection(state: state),
         const SizedBox(height: AppSpacing.lg),
         _PlanQuickSummary(
           debtPercent: state.debtPaymentPercentOfIncome.round(),
@@ -393,6 +474,53 @@ class PlanScreen extends StatelessWidget {
       FinancialTaskStatus.partial => 'Parcial',
       FinancialTaskStatus.skipped => 'Omitida',
     };
+  }
+}
+
+class _FinancialAdviceCard extends StatelessWidget {
+  const _FinancialAdviceCard({required this.advice});
+
+  final FinancialAdvice advice;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = switch (advice.level) {
+      FinancialAdviceLevel.positive => AppColors.primary,
+      FinancialAdviceLevel.suggestion => AppColors.freeUse,
+      FinancialAdviceLevel.warning => AppColors.pending,
+    };
+
+    return AppCard(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppIconBubble(icon: advice.icon, color: color),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  advice.title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  advice.description,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textSecondary,
+                        height: 1.4,
+                      ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -884,6 +1012,7 @@ class FinancialTasksSection extends StatelessWidget {
     required this.tasks,
     required this.progress,
     required this.onAddTask,
+    required this.onViewAdvice,
     required this.onEditTask,
     required this.onToggleTask,
     required this.onStatusSelected,
@@ -893,6 +1022,7 @@ class FinancialTasksSection extends StatelessWidget {
   final List<FinancialTask> tasks;
   final FinancialTaskProgress progress;
   final VoidCallback onAddTask;
+  final VoidCallback onViewAdvice;
   final ValueChanged<FinancialTask> onEditTask;
   final void Function(FinancialTask task, bool isDone) onToggleTask;
   final void Function(FinancialTask task, FinancialTaskStatus status)
@@ -927,7 +1057,7 @@ class FinancialTasksSection extends StatelessWidget {
                     AppButton(
                       label: isPhoneWidth ? 'Consejos' : 'Ver consejos',
                       icon: Icons.lightbulb_outline,
-                      onPressed: onAddTask,
+                      onPressed: onViewAdvice,
                       variant: AppButtonVariant.secondary,
                     ),
                   ],

@@ -2,6 +2,7 @@ import 'package:app_finance/src/core/domain/finance_period.dart';
 import 'package:app_finance/src/core/state/finance_state.dart';
 import 'package:app_finance/src/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:app_finance/src/features/transactions/domain/transaction_entry.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -54,6 +55,26 @@ void main() {
     final dashboard = DashboardOverview.fromState(state);
 
     expect(dashboard.monthLabel, 'Febrero 2031');
+  });
+
+  test('dashboard uses selected-period additional income consistently', () {
+    state.updateMonthlyIncome(10000);
+    state.addCategory('Comida', 6000, Colors.green);
+    _addIncome(state, amount: 2000, date: DateTime(2026, 7, 10));
+    _addIncome(state, amount: 3000, date: DateTime(2026, 8, 10));
+
+    var dashboard = DashboardOverview.fromState(state);
+    final budgetMetric = dashboard.metrics.singleWhere(
+      (metric) => metric.title == 'Total presupuestado',
+    );
+
+    expect(dashboard.monthlyIncome, 12000);
+    expect(budgetMetric.percent, 50);
+
+    state.selectPeriod(august);
+    dashboard = DashboardOverview.fromState(state);
+
+    expect(dashboard.monthlyIncome, 13000);
   });
 
   test('historical transactions remain stored outside selected period', () {

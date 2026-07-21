@@ -112,6 +112,36 @@ pruebas disponibles.
 
 ## Registro de avances
 
+### 2026-07-21 - Recepcion de tandas como ingreso vinculado
+
+- Cada tanda tiene una recepcion esperada persistente e independiente del
+  progreso de aportaciones. Registrar manualmente la fecha real crea un unico
+  ingreso determinista con categoria `Tanda recibida`.
+- La recepcion puede deshacerse o repararse sin modificar aportaciones ni sus
+  gastos. La eliminacion de la tanda contempla tambien el ingreso vinculado.
+- Drift avanzo a `schemaVersion` 4. La migracion crea una recepcion pendiente
+  por tanda existente sin generar ingresos y SQLite habilita explicitamente
+  `PRAGMA foreign_keys = ON` para cascadas reales.
+- El baseline previo fue de 95 pruebas aprobadas y tres fallos ambientales por
+  `ink_sparkle.frag` (Vulkan frente a SkSL); esos tests no se omitieron.
+
+### 2026-07-21 - Aportaciones de tandas vinculadas a movimientos
+
+- Cada aportacion nueva registrada crea atomicamente un movimiento de gasto
+  con categoria `Tanda`, fecha real de pago e ID determinista basado en la
+  aportacion; deshacer elimina exclusivamente ese movimiento vinculado.
+- El historial deriva los estados de vinculacion y permite registrar o recrear
+  explicitamente movimientos de aportaciones heredadas sin alterar saldos al
+  cargar la aplicacion.
+- Al eliminar una tanda se puede conservar el historial financiero o eliminar
+  solo los movimientos vinculados y verificados como generados por ella.
+- Se mantuvo Drift en `schemaVersion` 3 y se comprobo el ciclo de guardar,
+  cerrar, reabrir y deshacer con una base SQLite real.
+- `build_runner` finalizo correctamente. Las pruebas funcionales nuevas pasan;
+  la suite completa conserva un fallo ambiental intermitente al cargar
+  `ink_sparkle.frag` porque el asset del SDK solo contiene etapa Vulkan y el
+  backend de pruebas solicita SkSL.
+
 ### 2026-07-20 - Dinero libre y eleccion inicial del plan
 
 - El dinero libre ahora parte del ingreso mensual menos presupuesto, apartados

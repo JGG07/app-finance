@@ -8,6 +8,9 @@ import '../../features/planning/domain/planned_expense.dart';
 import '../../features/subscriptions/domain/subscription_entry.dart';
 import '../../features/tasks/domain/financial_task.dart';
 import '../../features/transactions/domain/transaction_entry.dart';
+import '../../features/tandas/domain/tanda.dart';
+import '../../features/tandas/domain/tanda_contribution.dart';
+import '../../features/tandas/domain/tanda_receipt.dart';
 
 class FinanceSnapshot {
   const FinanceSnapshot({
@@ -23,6 +26,9 @@ class FinanceSnapshot {
     required this.surplusPlan,
     required this.manualTasks,
     required this.taskOverrides,
+    required this.tandas,
+    required this.tandaContributions,
+    required this.tandaReceipts,
   });
 
   final double monthlyIncome;
@@ -37,4 +43,7 @@ class FinanceSnapshot {
   final SurplusPlan surplusPlan;
   final List<FinancialTask> manualTasks;
   final Map<String, FinancialTaskOverride> taskOverrides;
+  final List<Tanda> tandas;
+  final List<TandaContribution> tandaContributions;
+  final List<TandaReceipt> tandaReceipts;
 }

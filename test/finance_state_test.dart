@@ -101,7 +101,8 @@ void main() {
     expect(state.antExpensePercentOfFree, 1.25);
   });
 
-  test('treats legacy unmatched expenses as ant expenses, never income', () {
+  test('treats legacy unmatched expenses as unbudgeted, never ant or income',
+      () {
     final state = FinanceState();
     state.selectPeriod(FinancePeriod(year: 2026, month: 7));
     state.updateMonthlyIncome(10000);
@@ -123,7 +124,8 @@ void main() {
     );
 
     expect(state.totalBudgetUtilized, 0);
-    expect(state.antExpenseSpent, 125);
+    expect(state.antExpenseSpent, 0);
+    expect(state.unbudgetedExpensesForSelectedPeriod, 125);
     expect(state.totalExpenses, 125);
   });
 

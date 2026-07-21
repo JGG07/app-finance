@@ -125,6 +125,29 @@ void main() {
     expect(state.totalBudgetSpentForSelectedPeriod, 800);
   });
 
+  test('categories expose selected-period spending and update by period', () {
+    _addMovement(
+      state,
+      category: 'Comida',
+      amount: 1200,
+      date: DateTime(2026, 7, 14),
+      type: TransactionType.expense,
+    );
+    _addMovement(
+      state,
+      category: 'Comida',
+      amount: 800,
+      date: DateTime(2026, 6, 14),
+      type: TransactionType.expense,
+    );
+
+    expect(_categoryNamed(state, 'Comida').spent, 1200);
+
+    state.selectPeriod(june);
+
+    expect(_categoryNamed(state, 'Comida').spent, 800);
+  });
+
   test('category without movements keeps its full limit available', () {
     expect(state.spentForCategoryInSelectedPeriod(food), 0);
     expect(state.availableForCategoryInSelectedPeriod(food), 4000);

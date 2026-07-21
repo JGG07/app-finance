@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/state/finance_state.dart';
 import '../../../core/state/finance_state_provider.dart';
+import '../../../core/utils/chart_value_normalizer.dart';
 import '../../../core/utils/currency_converter.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../shared/presentation/app_design.dart';
@@ -628,7 +629,7 @@ class DashboardOverview {
   final String spentPercentLabel;
 
   factory DashboardOverview.fromState(FinanceState state) {
-    final monthlyIncome = state.monthlyIncome;
+    final monthlyIncome = state.totalMonthlyIncome;
     final debts = state.totalMonthlyCardPayments;
     final apartados = state.totalAllocated + state.totalMonthlyExtras;
     final plannedSurplus = state.availableAfterMonthlyPlan;
@@ -864,6 +865,8 @@ class DistributionSlice {
   final double percent;
   final Color color;
   final IconData icon;
+
+  double get visualAmount => ChartValueNormalizer.positive(amount);
 }
 
 enum IncomeBreakdownKind { debts, apartados, savings }
@@ -972,9 +975,10 @@ class IncomeHeroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final availableRatio = amount > 0
-        ? (availableAmount / amount).clamp(0.0, 1.0).toDouble()
-        : 0.0;
+    final availableRatio = ChartValueNormalizer.fraction(
+      availableAmount,
+      amount,
+    );
     final availablePercent = (availableRatio * 100).round();
 
     return Container(
@@ -1527,25 +1531,36 @@ class StackedProgressBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final total = slices.fold<double>(0, (sum, slice) => sum + slice.amount);
+    final visualSlices = slices.where((slice) => slice.visualAmount > 0);
+    final total = ChartValueNormalizer.positiveTotal(
+      visualSlices.map((slice) => slice.visualAmount),
+    );
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(999),
       child: SizedBox(
         height: 18,
-        child: Row(
-          children: slices.map((slice) {
-            return Expanded(
-              flex: total <= 0
-                  ? 1
-                  : math.max(1, (slice.amount / total * 1000).round()),
-              child: ColoredBox(
-                color: slice.color,
-                child: const SizedBox.expand(),
+        child: total <= 0
+            ? const ColoredBox(color: AppColors.surfaceSoft)
+            : Row(
+                children: visualSlices.map((slice) {
+                  return Expanded(
+                    flex: math.max(
+                      1,
+                      (ChartValueNormalizer.fraction(
+                                slice.visualAmount,
+                                total,
+                              ) *
+                              1000)
+                          .round(),
+                    ),
+                    child: ColoredBox(
+                      color: slice.color,
+                      child: const SizedBox.expand(),
+                    ),
+                  );
+                }).toList(),
               ),
-            );
-          }).toList(),
-        ),
       ),
     );
   }
@@ -2098,11 +2113,18 @@ class _DonutChartPainter extends CustomPainter {
 
     canvas.drawArc(rect, 0, math.pi * 2, false, backgroundPaint);
 
-    final total = slices.fold<double>(0, (sum, slice) => sum + slice.amount);
+    final total = ChartValueNormalizer.positiveTotal(
+      slices.map((slice) => slice.visualAmount),
+    );
     var startAngle = -math.pi / 2;
 
     for (final slice in slices) {
-      final sweep = total <= 0 ? 0 : slice.amount / total * math.pi * 2;
+      final sweep = ChartValueNormalizer.fraction(
+            slice.visualAmount,
+            total,
+          ) *
+          math.pi *
+          2;
       final paint = Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = strokeWidth

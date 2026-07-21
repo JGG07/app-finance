@@ -1,6 +1,7 @@
 import 'package:app_finance/src/core/domain/finance_period.dart';
 import 'package:app_finance/src/core/state/finance_state.dart';
 import 'package:app_finance/src/core/utils/currency_formatter.dart';
+import 'package:app_finance/src/features/budgets/domain/budget_category.dart';
 import 'package:app_finance/src/features/dashboard/domain/surplus_plan.dart';
 import 'package:app_finance/src/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:app_finance/src/features/transactions/domain/transaction_entry.dart';
@@ -18,11 +19,25 @@ void main() {
     state.updateSurplusPlan(SurplusPlanType.none);
   });
 
-  test('unbudgeted selected-period expense counts as an ant expense', () {
-    _addMovement(state, 'Cafe', 100, DateTime(2026, 7, 3));
+  test('explicit selected-period ant category counts as an ant expense', () {
+    _addMovement(
+      state,
+      BudgetCategory.antExpenseTitle,
+      100,
+      DateTime(2026, 7, 3),
+    );
 
     expect(state.antExpensesForSelectedPeriod, 100);
     expect(state.unplannedRegisteredExpenses, 100);
+  });
+
+  test('Emergencia and Tanda are unbudgeted but not ant expenses', () {
+    _addMovement(state, 'Emergencia', 300, DateTime(2026, 7, 3));
+    _addMovement(state, 'Tanda', 500, DateTime(2026, 7, 3));
+
+    expect(state.antExpensesForSelectedPeriod, 0);
+    expect(state.unbudgetedExpensesForSelectedPeriod, 800);
+    expect(state.unplannedRegisteredExpenses, 800);
   });
 
   test('budgeted expense does not count as an ant expense', () {
@@ -45,14 +60,29 @@ void main() {
   });
 
   test('unbudgeted expense from another period is excluded', () {
-    _addMovement(state, 'Cafe', 100, DateTime(2026, 8, 6));
+    _addMovement(
+      state,
+      BudgetCategory.antExpenseTitle,
+      100,
+      DateTime(2026, 8, 6),
+    );
 
     expect(state.antExpensesForSelectedPeriod, 0);
   });
 
   test('changing period recalculates ant expenses', () {
-    _addMovement(state, 'Cafe', 100, DateTime(2026, 7, 7));
-    _addMovement(state, 'Snack', 250, DateTime(2026, 8, 7));
+    _addMovement(
+      state,
+      BudgetCategory.antExpenseTitle,
+      100,
+      DateTime(2026, 7, 7),
+    );
+    _addMovement(
+      state,
+      BudgetCategory.antExpenseTitle,
+      250,
+      DateTime(2026, 8, 7),
+    );
 
     expect(state.antExpensesForSelectedPeriod, 100);
 
@@ -64,7 +94,12 @@ void main() {
   test('percentage uses free money before ant expenses', () {
     state.updateMonthlyIncome(10000);
     state.addCategory('Comida', 4000, Colors.green);
-    _addMovement(state, 'Cafe', 750, DateTime(2026, 7, 8));
+    _addMovement(
+      state,
+      BudgetCategory.antExpenseTitle,
+      750,
+      DateTime(2026, 7, 8),
+    );
 
     expect(state.freeMoneyBeforeAntExpenses, 6000);
     expect(state.antExpensesPercentOfFreeMoney, 12.5);
@@ -73,13 +108,23 @@ void main() {
 
   test('percentage can exceed one hundred percent', () {
     state.updateMonthlyIncome(100);
-    _addMovement(state, 'Cafe', 150, DateTime(2026, 7, 9));
+    _addMovement(
+      state,
+      BudgetCategory.antExpenseTitle,
+      150,
+      DateTime(2026, 7, 9),
+    );
 
     expect(state.antExpensesPercentOfFreeMoney, 150);
   });
 
   test('percentage is safe when free money is zero', () {
-    _addMovement(state, 'Cafe', 100, DateTime(2026, 7, 10));
+    _addMovement(
+      state,
+      BudgetCategory.antExpenseTitle,
+      100,
+      DateTime(2026, 7, 10),
+    );
 
     expect(state.freeMoneyBeforeAntExpenses, 0);
     expect(state.antExpensesPercentOfFreeMoney, 0);
@@ -87,7 +132,12 @@ void main() {
 
   test('free money after ant expenses can be negative', () {
     state.updateMonthlyIncome(100);
-    _addMovement(state, 'Cafe', 150, DateTime(2026, 7, 11));
+    _addMovement(
+      state,
+      BudgetCategory.antExpenseTitle,
+      150,
+      DateTime(2026, 7, 11),
+    );
 
     expect(state.freeMoneyAfterAntExpenses, -50);
   });
@@ -95,7 +145,12 @@ void main() {
   test('ant expenses are deducted exactly once', () {
     state.updateMonthlyIncome(10000);
     state.addCategory('Comida', 4000, Colors.green);
-    _addMovement(state, 'Cafe', 1000, DateTime(2026, 7, 12));
+    _addMovement(
+      state,
+      BudgetCategory.antExpenseTitle,
+      1000,
+      DateTime(2026, 7, 12),
+    );
 
     expect(state.surplusPlanAllocation.freeUse, 6000);
     expect(state.freeMoneyBeforeAntExpenses, 6000);
@@ -103,10 +158,25 @@ void main() {
     expect(state.realEstimatedSurplus, 5000);
   });
 
+  test('real surplus deducts every unbudgeted expense exactly once', () {
+    state.updateMonthlyIncome(10000);
+    state.addCategory('Comida', 4000, Colors.green);
+    _addMovement(state, 'Emergencia', 1000, DateTime(2026, 7, 12));
+
+    expect(state.antExpensesForSelectedPeriod, 0);
+    expect(state.unbudgetedExpensesForSelectedPeriod, 1000);
+    expect(state.realEstimatedSurplus, 5000);
+  });
+
   test('dashboard exposes monthly ant amount, percentage and zero state', () {
     state.updateMonthlyIncome(10000);
     state.addCategory('Comida', 4000, Colors.green);
-    _addMovement(state, 'Cafe', 750, DateTime(2026, 7, 13));
+    _addMovement(
+      state,
+      BudgetCategory.antExpenseTitle,
+      750,
+      DateTime(2026, 7, 13),
+    );
 
     var dashboard = DashboardOverview.fromState(state);
     expect(dashboard.antExpenseAmount, 750);

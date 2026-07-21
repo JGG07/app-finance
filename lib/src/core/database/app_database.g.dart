@@ -4234,6 +4234,1651 @@ class FinancialTaskOverridesCompanion
   }
 }
 
+class $TandasTable extends Tandas with TableInfo<$TandasTable, Tanda> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TandasTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+      'name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _contributionAmountMeta =
+      const VerificationMeta('contributionAmount');
+  @override
+  late final GeneratedColumn<double> contributionAmount =
+      GeneratedColumn<double>('contribution_amount', aliasedName, false,
+          type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _frequencyMeta =
+      const VerificationMeta('frequency');
+  @override
+  late final GeneratedColumn<String> frequency = GeneratedColumn<String>(
+      'frequency', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _startDateMeta =
+      const VerificationMeta('startDate');
+  @override
+  late final GeneratedColumn<DateTime> startDate = GeneratedColumn<DateTime>(
+      'start_date', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _participantCountMeta =
+      const VerificationMeta('participantCount');
+  @override
+  late final GeneratedColumn<int> participantCount = GeneratedColumn<int>(
+      'participant_count', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _assignedTurnMeta =
+      const VerificationMeta('assignedTurn');
+  @override
+  late final GeneratedColumn<int> assignedTurn = GeneratedColumn<int>(
+      'assigned_turn', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _completedContributionsMeta =
+      const VerificationMeta('completedContributions');
+  @override
+  late final GeneratedColumn<int> completedContributions = GeneratedColumn<int>(
+      'completed_contributions', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+      'status', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+      'notes', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        name,
+        contributionAmount,
+        frequency,
+        startDate,
+        participantCount,
+        assignedTurn,
+        completedContributions,
+        status,
+        notes,
+        createdAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'tandas';
+  @override
+  VerificationContext validateIntegrity(Insertable<Tanda> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+          _nameMeta, name.isAcceptableOrUnknown(data['name']!, _nameMeta));
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('contribution_amount')) {
+      context.handle(
+          _contributionAmountMeta,
+          contributionAmount.isAcceptableOrUnknown(
+              data['contribution_amount']!, _contributionAmountMeta));
+    } else if (isInserting) {
+      context.missing(_contributionAmountMeta);
+    }
+    if (data.containsKey('frequency')) {
+      context.handle(_frequencyMeta,
+          frequency.isAcceptableOrUnknown(data['frequency']!, _frequencyMeta));
+    } else if (isInserting) {
+      context.missing(_frequencyMeta);
+    }
+    if (data.containsKey('start_date')) {
+      context.handle(_startDateMeta,
+          startDate.isAcceptableOrUnknown(data['start_date']!, _startDateMeta));
+    } else if (isInserting) {
+      context.missing(_startDateMeta);
+    }
+    if (data.containsKey('participant_count')) {
+      context.handle(
+          _participantCountMeta,
+          participantCount.isAcceptableOrUnknown(
+              data['participant_count']!, _participantCountMeta));
+    } else if (isInserting) {
+      context.missing(_participantCountMeta);
+    }
+    if (data.containsKey('assigned_turn')) {
+      context.handle(
+          _assignedTurnMeta,
+          assignedTurn.isAcceptableOrUnknown(
+              data['assigned_turn']!, _assignedTurnMeta));
+    } else if (isInserting) {
+      context.missing(_assignedTurnMeta);
+    }
+    if (data.containsKey('completed_contributions')) {
+      context.handle(
+          _completedContributionsMeta,
+          completedContributions.isAcceptableOrUnknown(
+              data['completed_contributions']!, _completedContributionsMeta));
+    } else if (isInserting) {
+      context.missing(_completedContributionsMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(_statusMeta,
+          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+          _notesMeta, notes.isAcceptableOrUnknown(data['notes']!, _notesMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Tanda map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Tanda(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      name: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
+      contributionAmount: attachedDatabase.typeMapping.read(
+          DriftSqlType.double, data['${effectivePrefix}contribution_amount'])!,
+      frequency: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}frequency'])!,
+      startDate: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}start_date'])!,
+      participantCount: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}participant_count'])!,
+      assignedTurn: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}assigned_turn'])!,
+      completedContributions: attachedDatabase.typeMapping.read(
+          DriftSqlType.int, data['${effectivePrefix}completed_contributions'])!,
+      status: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
+      notes: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}notes']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+    );
+  }
+
+  @override
+  $TandasTable createAlias(String alias) {
+    return $TandasTable(attachedDatabase, alias);
+  }
+}
+
+class Tanda extends DataClass implements Insertable<Tanda> {
+  final String id;
+  final String name;
+  final double contributionAmount;
+  final String frequency;
+  final DateTime startDate;
+  final int participantCount;
+  final int assignedTurn;
+  final int completedContributions;
+  final String status;
+  final String? notes;
+  final DateTime createdAt;
+  const Tanda(
+      {required this.id,
+      required this.name,
+      required this.contributionAmount,
+      required this.frequency,
+      required this.startDate,
+      required this.participantCount,
+      required this.assignedTurn,
+      required this.completedContributions,
+      required this.status,
+      this.notes,
+      required this.createdAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    map['contribution_amount'] = Variable<double>(contributionAmount);
+    map['frequency'] = Variable<String>(frequency);
+    map['start_date'] = Variable<DateTime>(startDate);
+    map['participant_count'] = Variable<int>(participantCount);
+    map['assigned_turn'] = Variable<int>(assignedTurn);
+    map['completed_contributions'] = Variable<int>(completedContributions);
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  TandasCompanion toCompanion(bool nullToAbsent) {
+    return TandasCompanion(
+      id: Value(id),
+      name: Value(name),
+      contributionAmount: Value(contributionAmount),
+      frequency: Value(frequency),
+      startDate: Value(startDate),
+      participantCount: Value(participantCount),
+      assignedTurn: Value(assignedTurn),
+      completedContributions: Value(completedContributions),
+      status: Value(status),
+      notes:
+          notes == null && nullToAbsent ? const Value.absent() : Value(notes),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory Tanda.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Tanda(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      contributionAmount:
+          serializer.fromJson<double>(json['contributionAmount']),
+      frequency: serializer.fromJson<String>(json['frequency']),
+      startDate: serializer.fromJson<DateTime>(json['startDate']),
+      participantCount: serializer.fromJson<int>(json['participantCount']),
+      assignedTurn: serializer.fromJson<int>(json['assignedTurn']),
+      completedContributions:
+          serializer.fromJson<int>(json['completedContributions']),
+      status: serializer.fromJson<String>(json['status']),
+      notes: serializer.fromJson<String?>(json['notes']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'contributionAmount': serializer.toJson<double>(contributionAmount),
+      'frequency': serializer.toJson<String>(frequency),
+      'startDate': serializer.toJson<DateTime>(startDate),
+      'participantCount': serializer.toJson<int>(participantCount),
+      'assignedTurn': serializer.toJson<int>(assignedTurn),
+      'completedContributions': serializer.toJson<int>(completedContributions),
+      'status': serializer.toJson<String>(status),
+      'notes': serializer.toJson<String?>(notes),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  Tanda copyWith(
+          {String? id,
+          String? name,
+          double? contributionAmount,
+          String? frequency,
+          DateTime? startDate,
+          int? participantCount,
+          int? assignedTurn,
+          int? completedContributions,
+          String? status,
+          Value<String?> notes = const Value.absent(),
+          DateTime? createdAt}) =>
+      Tanda(
+        id: id ?? this.id,
+        name: name ?? this.name,
+        contributionAmount: contributionAmount ?? this.contributionAmount,
+        frequency: frequency ?? this.frequency,
+        startDate: startDate ?? this.startDate,
+        participantCount: participantCount ?? this.participantCount,
+        assignedTurn: assignedTurn ?? this.assignedTurn,
+        completedContributions:
+            completedContributions ?? this.completedContributions,
+        status: status ?? this.status,
+        notes: notes.present ? notes.value : this.notes,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  Tanda copyWithCompanion(TandasCompanion data) {
+    return Tanda(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      contributionAmount: data.contributionAmount.present
+          ? data.contributionAmount.value
+          : this.contributionAmount,
+      frequency: data.frequency.present ? data.frequency.value : this.frequency,
+      startDate: data.startDate.present ? data.startDate.value : this.startDate,
+      participantCount: data.participantCount.present
+          ? data.participantCount.value
+          : this.participantCount,
+      assignedTurn: data.assignedTurn.present
+          ? data.assignedTurn.value
+          : this.assignedTurn,
+      completedContributions: data.completedContributions.present
+          ? data.completedContributions.value
+          : this.completedContributions,
+      status: data.status.present ? data.status.value : this.status,
+      notes: data.notes.present ? data.notes.value : this.notes,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Tanda(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('contributionAmount: $contributionAmount, ')
+          ..write('frequency: $frequency, ')
+          ..write('startDate: $startDate, ')
+          ..write('participantCount: $participantCount, ')
+          ..write('assignedTurn: $assignedTurn, ')
+          ..write('completedContributions: $completedContributions, ')
+          ..write('status: $status, ')
+          ..write('notes: $notes, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id,
+      name,
+      contributionAmount,
+      frequency,
+      startDate,
+      participantCount,
+      assignedTurn,
+      completedContributions,
+      status,
+      notes,
+      createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Tanda &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.contributionAmount == this.contributionAmount &&
+          other.frequency == this.frequency &&
+          other.startDate == this.startDate &&
+          other.participantCount == this.participantCount &&
+          other.assignedTurn == this.assignedTurn &&
+          other.completedContributions == this.completedContributions &&
+          other.status == this.status &&
+          other.notes == this.notes &&
+          other.createdAt == this.createdAt);
+}
+
+class TandasCompanion extends UpdateCompanion<Tanda> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<double> contributionAmount;
+  final Value<String> frequency;
+  final Value<DateTime> startDate;
+  final Value<int> participantCount;
+  final Value<int> assignedTurn;
+  final Value<int> completedContributions;
+  final Value<String> status;
+  final Value<String?> notes;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const TandasCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.contributionAmount = const Value.absent(),
+    this.frequency = const Value.absent(),
+    this.startDate = const Value.absent(),
+    this.participantCount = const Value.absent(),
+    this.assignedTurn = const Value.absent(),
+    this.completedContributions = const Value.absent(),
+    this.status = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  TandasCompanion.insert({
+    required String id,
+    required String name,
+    required double contributionAmount,
+    required String frequency,
+    required DateTime startDate,
+    required int participantCount,
+    required int assignedTurn,
+    required int completedContributions,
+    required String status,
+    this.notes = const Value.absent(),
+    required DateTime createdAt,
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        name = Value(name),
+        contributionAmount = Value(contributionAmount),
+        frequency = Value(frequency),
+        startDate = Value(startDate),
+        participantCount = Value(participantCount),
+        assignedTurn = Value(assignedTurn),
+        completedContributions = Value(completedContributions),
+        status = Value(status),
+        createdAt = Value(createdAt);
+  static Insertable<Tanda> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<double>? contributionAmount,
+    Expression<String>? frequency,
+    Expression<DateTime>? startDate,
+    Expression<int>? participantCount,
+    Expression<int>? assignedTurn,
+    Expression<int>? completedContributions,
+    Expression<String>? status,
+    Expression<String>? notes,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (contributionAmount != null) 'contribution_amount': contributionAmount,
+      if (frequency != null) 'frequency': frequency,
+      if (startDate != null) 'start_date': startDate,
+      if (participantCount != null) 'participant_count': participantCount,
+      if (assignedTurn != null) 'assigned_turn': assignedTurn,
+      if (completedContributions != null)
+        'completed_contributions': completedContributions,
+      if (status != null) 'status': status,
+      if (notes != null) 'notes': notes,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  TandasCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? name,
+      Value<double>? contributionAmount,
+      Value<String>? frequency,
+      Value<DateTime>? startDate,
+      Value<int>? participantCount,
+      Value<int>? assignedTurn,
+      Value<int>? completedContributions,
+      Value<String>? status,
+      Value<String?>? notes,
+      Value<DateTime>? createdAt,
+      Value<int>? rowid}) {
+    return TandasCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      contributionAmount: contributionAmount ?? this.contributionAmount,
+      frequency: frequency ?? this.frequency,
+      startDate: startDate ?? this.startDate,
+      participantCount: participantCount ?? this.participantCount,
+      assignedTurn: assignedTurn ?? this.assignedTurn,
+      completedContributions:
+          completedContributions ?? this.completedContributions,
+      status: status ?? this.status,
+      notes: notes ?? this.notes,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (contributionAmount.present) {
+      map['contribution_amount'] = Variable<double>(contributionAmount.value);
+    }
+    if (frequency.present) {
+      map['frequency'] = Variable<String>(frequency.value);
+    }
+    if (startDate.present) {
+      map['start_date'] = Variable<DateTime>(startDate.value);
+    }
+    if (participantCount.present) {
+      map['participant_count'] = Variable<int>(participantCount.value);
+    }
+    if (assignedTurn.present) {
+      map['assigned_turn'] = Variable<int>(assignedTurn.value);
+    }
+    if (completedContributions.present) {
+      map['completed_contributions'] =
+          Variable<int>(completedContributions.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TandasCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('contributionAmount: $contributionAmount, ')
+          ..write('frequency: $frequency, ')
+          ..write('startDate: $startDate, ')
+          ..write('participantCount: $participantCount, ')
+          ..write('assignedTurn: $assignedTurn, ')
+          ..write('completedContributions: $completedContributions, ')
+          ..write('status: $status, ')
+          ..write('notes: $notes, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $TandaContributionsTable extends TandaContributions
+    with TableInfo<$TandaContributionsTable, TandaContribution> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TandaContributionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _tandaIdMeta =
+      const VerificationMeta('tandaId');
+  @override
+  late final GeneratedColumn<String> tandaId = GeneratedColumn<String>(
+      'tanda_id', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES tandas (id) ON DELETE CASCADE'));
+  static const VerificationMeta _sequenceNumberMeta =
+      const VerificationMeta('sequenceNumber');
+  @override
+  late final GeneratedColumn<int> sequenceNumber = GeneratedColumn<int>(
+      'sequence_number', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _amountMeta = const VerificationMeta('amount');
+  @override
+  late final GeneratedColumn<double> amount = GeneratedColumn<double>(
+      'amount', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _scheduledDateMeta =
+      const VerificationMeta('scheduledDate');
+  @override
+  late final GeneratedColumn<DateTime> scheduledDate =
+      GeneratedColumn<DateTime>('scheduled_date', aliasedName, false,
+          type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+      'status', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _paidAtMeta = const VerificationMeta('paidAt');
+  @override
+  late final GeneratedColumn<DateTime> paidAt = GeneratedColumn<DateTime>(
+      'paid_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _migratedFromLegacyCounterMeta =
+      const VerificationMeta('migratedFromLegacyCounter');
+  @override
+  late final GeneratedColumn<bool> migratedFromLegacyCounter =
+      GeneratedColumn<bool>('migrated_from_legacy_counter', aliasedName, false,
+          type: DriftSqlType.bool,
+          requiredDuringInsert: false,
+          defaultConstraints: GeneratedColumn.constraintIsAlways(
+              'CHECK ("migrated_from_legacy_counter" IN (0, 1))'),
+          defaultValue: const Constant(false));
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+      'notes', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _linkedTransactionIdMeta =
+      const VerificationMeta('linkedTransactionId');
+  @override
+  late final GeneratedColumn<String> linkedTransactionId =
+      GeneratedColumn<String>('linked_transaction_id', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        tandaId,
+        sequenceNumber,
+        amount,
+        scheduledDate,
+        status,
+        paidAt,
+        createdAt,
+        migratedFromLegacyCounter,
+        notes,
+        linkedTransactionId
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'tanda_contributions';
+  @override
+  VerificationContext validateIntegrity(Insertable<TandaContribution> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('tanda_id')) {
+      context.handle(_tandaIdMeta,
+          tandaId.isAcceptableOrUnknown(data['tanda_id']!, _tandaIdMeta));
+    } else if (isInserting) {
+      context.missing(_tandaIdMeta);
+    }
+    if (data.containsKey('sequence_number')) {
+      context.handle(
+          _sequenceNumberMeta,
+          sequenceNumber.isAcceptableOrUnknown(
+              data['sequence_number']!, _sequenceNumberMeta));
+    } else if (isInserting) {
+      context.missing(_sequenceNumberMeta);
+    }
+    if (data.containsKey('amount')) {
+      context.handle(_amountMeta,
+          amount.isAcceptableOrUnknown(data['amount']!, _amountMeta));
+    } else if (isInserting) {
+      context.missing(_amountMeta);
+    }
+    if (data.containsKey('scheduled_date')) {
+      context.handle(
+          _scheduledDateMeta,
+          scheduledDate.isAcceptableOrUnknown(
+              data['scheduled_date']!, _scheduledDateMeta));
+    } else if (isInserting) {
+      context.missing(_scheduledDateMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(_statusMeta,
+          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('paid_at')) {
+      context.handle(_paidAtMeta,
+          paidAt.isAcceptableOrUnknown(data['paid_at']!, _paidAtMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('migrated_from_legacy_counter')) {
+      context.handle(
+          _migratedFromLegacyCounterMeta,
+          migratedFromLegacyCounter.isAcceptableOrUnknown(
+              data['migrated_from_legacy_counter']!,
+              _migratedFromLegacyCounterMeta));
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+          _notesMeta, notes.isAcceptableOrUnknown(data['notes']!, _notesMeta));
+    }
+    if (data.containsKey('linked_transaction_id')) {
+      context.handle(
+          _linkedTransactionIdMeta,
+          linkedTransactionId.isAcceptableOrUnknown(
+              data['linked_transaction_id']!, _linkedTransactionIdMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+        {tandaId, sequenceNumber},
+      ];
+  @override
+  TandaContribution map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TandaContribution(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      tandaId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}tanda_id'])!,
+      sequenceNumber: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}sequence_number'])!,
+      amount: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}amount'])!,
+      scheduledDate: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}scheduled_date'])!,
+      status: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
+      paidAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}paid_at']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      migratedFromLegacyCounter: attachedDatabase.typeMapping.read(
+          DriftSqlType.bool,
+          data['${effectivePrefix}migrated_from_legacy_counter'])!,
+      notes: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}notes']),
+      linkedTransactionId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}linked_transaction_id']),
+    );
+  }
+
+  @override
+  $TandaContributionsTable createAlias(String alias) {
+    return $TandaContributionsTable(attachedDatabase, alias);
+  }
+}
+
+class TandaContribution extends DataClass
+    implements Insertable<TandaContribution> {
+  final String id;
+  final String tandaId;
+  final int sequenceNumber;
+  final double amount;
+  final DateTime scheduledDate;
+  final String status;
+  final DateTime? paidAt;
+  final DateTime createdAt;
+  final bool migratedFromLegacyCounter;
+  final String? notes;
+  final String? linkedTransactionId;
+  const TandaContribution(
+      {required this.id,
+      required this.tandaId,
+      required this.sequenceNumber,
+      required this.amount,
+      required this.scheduledDate,
+      required this.status,
+      this.paidAt,
+      required this.createdAt,
+      required this.migratedFromLegacyCounter,
+      this.notes,
+      this.linkedTransactionId});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['tanda_id'] = Variable<String>(tandaId);
+    map['sequence_number'] = Variable<int>(sequenceNumber);
+    map['amount'] = Variable<double>(amount);
+    map['scheduled_date'] = Variable<DateTime>(scheduledDate);
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || paidAt != null) {
+      map['paid_at'] = Variable<DateTime>(paidAt);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['migrated_from_legacy_counter'] =
+        Variable<bool>(migratedFromLegacyCounter);
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    if (!nullToAbsent || linkedTransactionId != null) {
+      map['linked_transaction_id'] = Variable<String>(linkedTransactionId);
+    }
+    return map;
+  }
+
+  TandaContributionsCompanion toCompanion(bool nullToAbsent) {
+    return TandaContributionsCompanion(
+      id: Value(id),
+      tandaId: Value(tandaId),
+      sequenceNumber: Value(sequenceNumber),
+      amount: Value(amount),
+      scheduledDate: Value(scheduledDate),
+      status: Value(status),
+      paidAt:
+          paidAt == null && nullToAbsent ? const Value.absent() : Value(paidAt),
+      createdAt: Value(createdAt),
+      migratedFromLegacyCounter: Value(migratedFromLegacyCounter),
+      notes:
+          notes == null && nullToAbsent ? const Value.absent() : Value(notes),
+      linkedTransactionId: linkedTransactionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(linkedTransactionId),
+    );
+  }
+
+  factory TandaContribution.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TandaContribution(
+      id: serializer.fromJson<String>(json['id']),
+      tandaId: serializer.fromJson<String>(json['tandaId']),
+      sequenceNumber: serializer.fromJson<int>(json['sequenceNumber']),
+      amount: serializer.fromJson<double>(json['amount']),
+      scheduledDate: serializer.fromJson<DateTime>(json['scheduledDate']),
+      status: serializer.fromJson<String>(json['status']),
+      paidAt: serializer.fromJson<DateTime?>(json['paidAt']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      migratedFromLegacyCounter:
+          serializer.fromJson<bool>(json['migratedFromLegacyCounter']),
+      notes: serializer.fromJson<String?>(json['notes']),
+      linkedTransactionId:
+          serializer.fromJson<String?>(json['linkedTransactionId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'tandaId': serializer.toJson<String>(tandaId),
+      'sequenceNumber': serializer.toJson<int>(sequenceNumber),
+      'amount': serializer.toJson<double>(amount),
+      'scheduledDate': serializer.toJson<DateTime>(scheduledDate),
+      'status': serializer.toJson<String>(status),
+      'paidAt': serializer.toJson<DateTime?>(paidAt),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'migratedFromLegacyCounter':
+          serializer.toJson<bool>(migratedFromLegacyCounter),
+      'notes': serializer.toJson<String?>(notes),
+      'linkedTransactionId': serializer.toJson<String?>(linkedTransactionId),
+    };
+  }
+
+  TandaContribution copyWith(
+          {String? id,
+          String? tandaId,
+          int? sequenceNumber,
+          double? amount,
+          DateTime? scheduledDate,
+          String? status,
+          Value<DateTime?> paidAt = const Value.absent(),
+          DateTime? createdAt,
+          bool? migratedFromLegacyCounter,
+          Value<String?> notes = const Value.absent(),
+          Value<String?> linkedTransactionId = const Value.absent()}) =>
+      TandaContribution(
+        id: id ?? this.id,
+        tandaId: tandaId ?? this.tandaId,
+        sequenceNumber: sequenceNumber ?? this.sequenceNumber,
+        amount: amount ?? this.amount,
+        scheduledDate: scheduledDate ?? this.scheduledDate,
+        status: status ?? this.status,
+        paidAt: paidAt.present ? paidAt.value : this.paidAt,
+        createdAt: createdAt ?? this.createdAt,
+        migratedFromLegacyCounter:
+            migratedFromLegacyCounter ?? this.migratedFromLegacyCounter,
+        notes: notes.present ? notes.value : this.notes,
+        linkedTransactionId: linkedTransactionId.present
+            ? linkedTransactionId.value
+            : this.linkedTransactionId,
+      );
+  TandaContribution copyWithCompanion(TandaContributionsCompanion data) {
+    return TandaContribution(
+      id: data.id.present ? data.id.value : this.id,
+      tandaId: data.tandaId.present ? data.tandaId.value : this.tandaId,
+      sequenceNumber: data.sequenceNumber.present
+          ? data.sequenceNumber.value
+          : this.sequenceNumber,
+      amount: data.amount.present ? data.amount.value : this.amount,
+      scheduledDate: data.scheduledDate.present
+          ? data.scheduledDate.value
+          : this.scheduledDate,
+      status: data.status.present ? data.status.value : this.status,
+      paidAt: data.paidAt.present ? data.paidAt.value : this.paidAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      migratedFromLegacyCounter: data.migratedFromLegacyCounter.present
+          ? data.migratedFromLegacyCounter.value
+          : this.migratedFromLegacyCounter,
+      notes: data.notes.present ? data.notes.value : this.notes,
+      linkedTransactionId: data.linkedTransactionId.present
+          ? data.linkedTransactionId.value
+          : this.linkedTransactionId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TandaContribution(')
+          ..write('id: $id, ')
+          ..write('tandaId: $tandaId, ')
+          ..write('sequenceNumber: $sequenceNumber, ')
+          ..write('amount: $amount, ')
+          ..write('scheduledDate: $scheduledDate, ')
+          ..write('status: $status, ')
+          ..write('paidAt: $paidAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('migratedFromLegacyCounter: $migratedFromLegacyCounter, ')
+          ..write('notes: $notes, ')
+          ..write('linkedTransactionId: $linkedTransactionId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id,
+      tandaId,
+      sequenceNumber,
+      amount,
+      scheduledDate,
+      status,
+      paidAt,
+      createdAt,
+      migratedFromLegacyCounter,
+      notes,
+      linkedTransactionId);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TandaContribution &&
+          other.id == this.id &&
+          other.tandaId == this.tandaId &&
+          other.sequenceNumber == this.sequenceNumber &&
+          other.amount == this.amount &&
+          other.scheduledDate == this.scheduledDate &&
+          other.status == this.status &&
+          other.paidAt == this.paidAt &&
+          other.createdAt == this.createdAt &&
+          other.migratedFromLegacyCounter == this.migratedFromLegacyCounter &&
+          other.notes == this.notes &&
+          other.linkedTransactionId == this.linkedTransactionId);
+}
+
+class TandaContributionsCompanion extends UpdateCompanion<TandaContribution> {
+  final Value<String> id;
+  final Value<String> tandaId;
+  final Value<int> sequenceNumber;
+  final Value<double> amount;
+  final Value<DateTime> scheduledDate;
+  final Value<String> status;
+  final Value<DateTime?> paidAt;
+  final Value<DateTime> createdAt;
+  final Value<bool> migratedFromLegacyCounter;
+  final Value<String?> notes;
+  final Value<String?> linkedTransactionId;
+  final Value<int> rowid;
+  const TandaContributionsCompanion({
+    this.id = const Value.absent(),
+    this.tandaId = const Value.absent(),
+    this.sequenceNumber = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.scheduledDate = const Value.absent(),
+    this.status = const Value.absent(),
+    this.paidAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.migratedFromLegacyCounter = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.linkedTransactionId = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  TandaContributionsCompanion.insert({
+    required String id,
+    required String tandaId,
+    required int sequenceNumber,
+    required double amount,
+    required DateTime scheduledDate,
+    required String status,
+    this.paidAt = const Value.absent(),
+    required DateTime createdAt,
+    this.migratedFromLegacyCounter = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.linkedTransactionId = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        tandaId = Value(tandaId),
+        sequenceNumber = Value(sequenceNumber),
+        amount = Value(amount),
+        scheduledDate = Value(scheduledDate),
+        status = Value(status),
+        createdAt = Value(createdAt);
+  static Insertable<TandaContribution> custom({
+    Expression<String>? id,
+    Expression<String>? tandaId,
+    Expression<int>? sequenceNumber,
+    Expression<double>? amount,
+    Expression<DateTime>? scheduledDate,
+    Expression<String>? status,
+    Expression<DateTime>? paidAt,
+    Expression<DateTime>? createdAt,
+    Expression<bool>? migratedFromLegacyCounter,
+    Expression<String>? notes,
+    Expression<String>? linkedTransactionId,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (tandaId != null) 'tanda_id': tandaId,
+      if (sequenceNumber != null) 'sequence_number': sequenceNumber,
+      if (amount != null) 'amount': amount,
+      if (scheduledDate != null) 'scheduled_date': scheduledDate,
+      if (status != null) 'status': status,
+      if (paidAt != null) 'paid_at': paidAt,
+      if (createdAt != null) 'created_at': createdAt,
+      if (migratedFromLegacyCounter != null)
+        'migrated_from_legacy_counter': migratedFromLegacyCounter,
+      if (notes != null) 'notes': notes,
+      if (linkedTransactionId != null)
+        'linked_transaction_id': linkedTransactionId,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  TandaContributionsCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? tandaId,
+      Value<int>? sequenceNumber,
+      Value<double>? amount,
+      Value<DateTime>? scheduledDate,
+      Value<String>? status,
+      Value<DateTime?>? paidAt,
+      Value<DateTime>? createdAt,
+      Value<bool>? migratedFromLegacyCounter,
+      Value<String?>? notes,
+      Value<String?>? linkedTransactionId,
+      Value<int>? rowid}) {
+    return TandaContributionsCompanion(
+      id: id ?? this.id,
+      tandaId: tandaId ?? this.tandaId,
+      sequenceNumber: sequenceNumber ?? this.sequenceNumber,
+      amount: amount ?? this.amount,
+      scheduledDate: scheduledDate ?? this.scheduledDate,
+      status: status ?? this.status,
+      paidAt: paidAt ?? this.paidAt,
+      createdAt: createdAt ?? this.createdAt,
+      migratedFromLegacyCounter:
+          migratedFromLegacyCounter ?? this.migratedFromLegacyCounter,
+      notes: notes ?? this.notes,
+      linkedTransactionId: linkedTransactionId ?? this.linkedTransactionId,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (tandaId.present) {
+      map['tanda_id'] = Variable<String>(tandaId.value);
+    }
+    if (sequenceNumber.present) {
+      map['sequence_number'] = Variable<int>(sequenceNumber.value);
+    }
+    if (amount.present) {
+      map['amount'] = Variable<double>(amount.value);
+    }
+    if (scheduledDate.present) {
+      map['scheduled_date'] = Variable<DateTime>(scheduledDate.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (paidAt.present) {
+      map['paid_at'] = Variable<DateTime>(paidAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (migratedFromLegacyCounter.present) {
+      map['migrated_from_legacy_counter'] =
+          Variable<bool>(migratedFromLegacyCounter.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (linkedTransactionId.present) {
+      map['linked_transaction_id'] =
+          Variable<String>(linkedTransactionId.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TandaContributionsCompanion(')
+          ..write('id: $id, ')
+          ..write('tandaId: $tandaId, ')
+          ..write('sequenceNumber: $sequenceNumber, ')
+          ..write('amount: $amount, ')
+          ..write('scheduledDate: $scheduledDate, ')
+          ..write('status: $status, ')
+          ..write('paidAt: $paidAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('migratedFromLegacyCounter: $migratedFromLegacyCounter, ')
+          ..write('notes: $notes, ')
+          ..write('linkedTransactionId: $linkedTransactionId, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $TandaReceiptsTable extends TandaReceipts
+    with TableInfo<$TandaReceiptsTable, TandaReceipt> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TandaReceiptsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _tandaIdMeta =
+      const VerificationMeta('tandaId');
+  @override
+  late final GeneratedColumn<String> tandaId = GeneratedColumn<String>(
+      'tanda_id', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'UNIQUE REFERENCES tandas (id) ON DELETE CASCADE'));
+  static const VerificationMeta _amountMeta = const VerificationMeta('amount');
+  @override
+  late final GeneratedColumn<double> amount = GeneratedColumn<double>(
+      'amount', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _scheduledDateMeta =
+      const VerificationMeta('scheduledDate');
+  @override
+  late final GeneratedColumn<DateTime> scheduledDate =
+      GeneratedColumn<DateTime>('scheduled_date', aliasedName, false,
+          type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+      'status', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _receivedAtMeta =
+      const VerificationMeta('receivedAt');
+  @override
+  late final GeneratedColumn<DateTime> receivedAt = GeneratedColumn<DateTime>(
+      'received_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _linkedTransactionIdMeta =
+      const VerificationMeta('linkedTransactionId');
+  @override
+  late final GeneratedColumn<String> linkedTransactionId =
+      GeneratedColumn<String>('linked_transaction_id', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+      'notes', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        tandaId,
+        amount,
+        scheduledDate,
+        status,
+        receivedAt,
+        linkedTransactionId,
+        createdAt,
+        notes
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'tanda_receipts';
+  @override
+  VerificationContext validateIntegrity(Insertable<TandaReceipt> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('tanda_id')) {
+      context.handle(_tandaIdMeta,
+          tandaId.isAcceptableOrUnknown(data['tanda_id']!, _tandaIdMeta));
+    } else if (isInserting) {
+      context.missing(_tandaIdMeta);
+    }
+    if (data.containsKey('amount')) {
+      context.handle(_amountMeta,
+          amount.isAcceptableOrUnknown(data['amount']!, _amountMeta));
+    } else if (isInserting) {
+      context.missing(_amountMeta);
+    }
+    if (data.containsKey('scheduled_date')) {
+      context.handle(
+          _scheduledDateMeta,
+          scheduledDate.isAcceptableOrUnknown(
+              data['scheduled_date']!, _scheduledDateMeta));
+    } else if (isInserting) {
+      context.missing(_scheduledDateMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(_statusMeta,
+          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('received_at')) {
+      context.handle(
+          _receivedAtMeta,
+          receivedAt.isAcceptableOrUnknown(
+              data['received_at']!, _receivedAtMeta));
+    }
+    if (data.containsKey('linked_transaction_id')) {
+      context.handle(
+          _linkedTransactionIdMeta,
+          linkedTransactionId.isAcceptableOrUnknown(
+              data['linked_transaction_id']!, _linkedTransactionIdMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+          _notesMeta, notes.isAcceptableOrUnknown(data['notes']!, _notesMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  TandaReceipt map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TandaReceipt(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      tandaId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}tanda_id'])!,
+      amount: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}amount'])!,
+      scheduledDate: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}scheduled_date'])!,
+      status: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
+      receivedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}received_at']),
+      linkedTransactionId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}linked_transaction_id']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      notes: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}notes']),
+    );
+  }
+
+  @override
+  $TandaReceiptsTable createAlias(String alias) {
+    return $TandaReceiptsTable(attachedDatabase, alias);
+  }
+}
+
+class TandaReceipt extends DataClass implements Insertable<TandaReceipt> {
+  final String id;
+  final String tandaId;
+  final double amount;
+  final DateTime scheduledDate;
+  final String status;
+  final DateTime? receivedAt;
+  final String? linkedTransactionId;
+  final DateTime createdAt;
+  final String? notes;
+  const TandaReceipt(
+      {required this.id,
+      required this.tandaId,
+      required this.amount,
+      required this.scheduledDate,
+      required this.status,
+      this.receivedAt,
+      this.linkedTransactionId,
+      required this.createdAt,
+      this.notes});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['tanda_id'] = Variable<String>(tandaId);
+    map['amount'] = Variable<double>(amount);
+    map['scheduled_date'] = Variable<DateTime>(scheduledDate);
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || receivedAt != null) {
+      map['received_at'] = Variable<DateTime>(receivedAt);
+    }
+    if (!nullToAbsent || linkedTransactionId != null) {
+      map['linked_transaction_id'] = Variable<String>(linkedTransactionId);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    return map;
+  }
+
+  TandaReceiptsCompanion toCompanion(bool nullToAbsent) {
+    return TandaReceiptsCompanion(
+      id: Value(id),
+      tandaId: Value(tandaId),
+      amount: Value(amount),
+      scheduledDate: Value(scheduledDate),
+      status: Value(status),
+      receivedAt: receivedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(receivedAt),
+      linkedTransactionId: linkedTransactionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(linkedTransactionId),
+      createdAt: Value(createdAt),
+      notes:
+          notes == null && nullToAbsent ? const Value.absent() : Value(notes),
+    );
+  }
+
+  factory TandaReceipt.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TandaReceipt(
+      id: serializer.fromJson<String>(json['id']),
+      tandaId: serializer.fromJson<String>(json['tandaId']),
+      amount: serializer.fromJson<double>(json['amount']),
+      scheduledDate: serializer.fromJson<DateTime>(json['scheduledDate']),
+      status: serializer.fromJson<String>(json['status']),
+      receivedAt: serializer.fromJson<DateTime?>(json['receivedAt']),
+      linkedTransactionId:
+          serializer.fromJson<String?>(json['linkedTransactionId']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      notes: serializer.fromJson<String?>(json['notes']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'tandaId': serializer.toJson<String>(tandaId),
+      'amount': serializer.toJson<double>(amount),
+      'scheduledDate': serializer.toJson<DateTime>(scheduledDate),
+      'status': serializer.toJson<String>(status),
+      'receivedAt': serializer.toJson<DateTime?>(receivedAt),
+      'linkedTransactionId': serializer.toJson<String?>(linkedTransactionId),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'notes': serializer.toJson<String?>(notes),
+    };
+  }
+
+  TandaReceipt copyWith(
+          {String? id,
+          String? tandaId,
+          double? amount,
+          DateTime? scheduledDate,
+          String? status,
+          Value<DateTime?> receivedAt = const Value.absent(),
+          Value<String?> linkedTransactionId = const Value.absent(),
+          DateTime? createdAt,
+          Value<String?> notes = const Value.absent()}) =>
+      TandaReceipt(
+        id: id ?? this.id,
+        tandaId: tandaId ?? this.tandaId,
+        amount: amount ?? this.amount,
+        scheduledDate: scheduledDate ?? this.scheduledDate,
+        status: status ?? this.status,
+        receivedAt: receivedAt.present ? receivedAt.value : this.receivedAt,
+        linkedTransactionId: linkedTransactionId.present
+            ? linkedTransactionId.value
+            : this.linkedTransactionId,
+        createdAt: createdAt ?? this.createdAt,
+        notes: notes.present ? notes.value : this.notes,
+      );
+  TandaReceipt copyWithCompanion(TandaReceiptsCompanion data) {
+    return TandaReceipt(
+      id: data.id.present ? data.id.value : this.id,
+      tandaId: data.tandaId.present ? data.tandaId.value : this.tandaId,
+      amount: data.amount.present ? data.amount.value : this.amount,
+      scheduledDate: data.scheduledDate.present
+          ? data.scheduledDate.value
+          : this.scheduledDate,
+      status: data.status.present ? data.status.value : this.status,
+      receivedAt:
+          data.receivedAt.present ? data.receivedAt.value : this.receivedAt,
+      linkedTransactionId: data.linkedTransactionId.present
+          ? data.linkedTransactionId.value
+          : this.linkedTransactionId,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      notes: data.notes.present ? data.notes.value : this.notes,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TandaReceipt(')
+          ..write('id: $id, ')
+          ..write('tandaId: $tandaId, ')
+          ..write('amount: $amount, ')
+          ..write('scheduledDate: $scheduledDate, ')
+          ..write('status: $status, ')
+          ..write('receivedAt: $receivedAt, ')
+          ..write('linkedTransactionId: $linkedTransactionId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('notes: $notes')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, tandaId, amount, scheduledDate, status,
+      receivedAt, linkedTransactionId, createdAt, notes);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TandaReceipt &&
+          other.id == this.id &&
+          other.tandaId == this.tandaId &&
+          other.amount == this.amount &&
+          other.scheduledDate == this.scheduledDate &&
+          other.status == this.status &&
+          other.receivedAt == this.receivedAt &&
+          other.linkedTransactionId == this.linkedTransactionId &&
+          other.createdAt == this.createdAt &&
+          other.notes == this.notes);
+}
+
+class TandaReceiptsCompanion extends UpdateCompanion<TandaReceipt> {
+  final Value<String> id;
+  final Value<String> tandaId;
+  final Value<double> amount;
+  final Value<DateTime> scheduledDate;
+  final Value<String> status;
+  final Value<DateTime?> receivedAt;
+  final Value<String?> linkedTransactionId;
+  final Value<DateTime> createdAt;
+  final Value<String?> notes;
+  final Value<int> rowid;
+  const TandaReceiptsCompanion({
+    this.id = const Value.absent(),
+    this.tandaId = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.scheduledDate = const Value.absent(),
+    this.status = const Value.absent(),
+    this.receivedAt = const Value.absent(),
+    this.linkedTransactionId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  TandaReceiptsCompanion.insert({
+    required String id,
+    required String tandaId,
+    required double amount,
+    required DateTime scheduledDate,
+    required String status,
+    this.receivedAt = const Value.absent(),
+    this.linkedTransactionId = const Value.absent(),
+    required DateTime createdAt,
+    this.notes = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        tandaId = Value(tandaId),
+        amount = Value(amount),
+        scheduledDate = Value(scheduledDate),
+        status = Value(status),
+        createdAt = Value(createdAt);
+  static Insertable<TandaReceipt> custom({
+    Expression<String>? id,
+    Expression<String>? tandaId,
+    Expression<double>? amount,
+    Expression<DateTime>? scheduledDate,
+    Expression<String>? status,
+    Expression<DateTime>? receivedAt,
+    Expression<String>? linkedTransactionId,
+    Expression<DateTime>? createdAt,
+    Expression<String>? notes,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (tandaId != null) 'tanda_id': tandaId,
+      if (amount != null) 'amount': amount,
+      if (scheduledDate != null) 'scheduled_date': scheduledDate,
+      if (status != null) 'status': status,
+      if (receivedAt != null) 'received_at': receivedAt,
+      if (linkedTransactionId != null)
+        'linked_transaction_id': linkedTransactionId,
+      if (createdAt != null) 'created_at': createdAt,
+      if (notes != null) 'notes': notes,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  TandaReceiptsCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? tandaId,
+      Value<double>? amount,
+      Value<DateTime>? scheduledDate,
+      Value<String>? status,
+      Value<DateTime?>? receivedAt,
+      Value<String?>? linkedTransactionId,
+      Value<DateTime>? createdAt,
+      Value<String?>? notes,
+      Value<int>? rowid}) {
+    return TandaReceiptsCompanion(
+      id: id ?? this.id,
+      tandaId: tandaId ?? this.tandaId,
+      amount: amount ?? this.amount,
+      scheduledDate: scheduledDate ?? this.scheduledDate,
+      status: status ?? this.status,
+      receivedAt: receivedAt ?? this.receivedAt,
+      linkedTransactionId: linkedTransactionId ?? this.linkedTransactionId,
+      createdAt: createdAt ?? this.createdAt,
+      notes: notes ?? this.notes,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (tandaId.present) {
+      map['tanda_id'] = Variable<String>(tandaId.value);
+    }
+    if (amount.present) {
+      map['amount'] = Variable<double>(amount.value);
+    }
+    if (scheduledDate.present) {
+      map['scheduled_date'] = Variable<DateTime>(scheduledDate.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (receivedAt.present) {
+      map['received_at'] = Variable<DateTime>(receivedAt.value);
+    }
+    if (linkedTransactionId.present) {
+      map['linked_transaction_id'] =
+          Variable<String>(linkedTransactionId.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TandaReceiptsCompanion(')
+          ..write('id: $id, ')
+          ..write('tandaId: $tandaId, ')
+          ..write('amount: $amount, ')
+          ..write('scheduledDate: $scheduledDate, ')
+          ..write('status: $status, ')
+          ..write('receivedAt: $receivedAt, ')
+          ..write('linkedTransactionId: $linkedTransactionId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('notes: $notes, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -4254,6 +5899,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $FinancialTasksTable financialTasks = $FinancialTasksTable(this);
   late final $FinancialTaskOverridesTable financialTaskOverrides =
       $FinancialTaskOverridesTable(this);
+  late final $TandasTable tandas = $TandasTable(this);
+  late final $TandaContributionsTable tandaContributions =
+      $TandaContributionsTable(this);
+  late final $TandaReceiptsTable tandaReceipts = $TandaReceiptsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -4270,8 +5919,30 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         monthlyExtras,
         surplusPlans,
         financialTasks,
-        financialTaskOverrides
+        financialTaskOverrides,
+        tandas,
+        tandaContributions,
+        tandaReceipts
       ];
+  @override
+  StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules(
+        [
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('tandas',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('tanda_contributions', kind: UpdateKind.delete),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('tandas',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('tanda_receipts', kind: UpdateKind.delete),
+            ],
+          ),
+        ],
+      );
 }
 
 typedef $$AppSettingsTableCreateCompanionBuilder = AppSettingsCompanion
@@ -6558,6 +8229,1146 @@ typedef $$FinancialTaskOverridesTableProcessedTableManager
         ),
         FinancialTaskOverride,
         PrefetchHooks Function()>;
+typedef $$TandasTableCreateCompanionBuilder = TandasCompanion Function({
+  required String id,
+  required String name,
+  required double contributionAmount,
+  required String frequency,
+  required DateTime startDate,
+  required int participantCount,
+  required int assignedTurn,
+  required int completedContributions,
+  required String status,
+  Value<String?> notes,
+  required DateTime createdAt,
+  Value<int> rowid,
+});
+typedef $$TandasTableUpdateCompanionBuilder = TandasCompanion Function({
+  Value<String> id,
+  Value<String> name,
+  Value<double> contributionAmount,
+  Value<String> frequency,
+  Value<DateTime> startDate,
+  Value<int> participantCount,
+  Value<int> assignedTurn,
+  Value<int> completedContributions,
+  Value<String> status,
+  Value<String?> notes,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+
+final class $$TandasTableReferences
+    extends BaseReferences<_$AppDatabase, $TandasTable, Tanda> {
+  $$TandasTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$TandaContributionsTable, List<TandaContribution>>
+      _tandaContributionsRefsTable(_$AppDatabase db) =>
+          MultiTypedResultKey.fromTable(db.tandaContributions,
+              aliasName: $_aliasNameGenerator(
+                  db.tandas.id, db.tandaContributions.tandaId));
+
+  $$TandaContributionsTableProcessedTableManager get tandaContributionsRefs {
+    final manager =
+        $$TandaContributionsTableTableManager($_db, $_db.tandaContributions)
+            .filter((f) => f.tandaId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache =
+        $_typedResult.readTableOrNull(_tandaContributionsRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+
+  static MultiTypedResultKey<$TandaReceiptsTable, List<TandaReceipt>>
+      _tandaReceiptsRefsTable(_$AppDatabase db) =>
+          MultiTypedResultKey.fromTable(db.tandaReceipts,
+              aliasName:
+                  $_aliasNameGenerator(db.tandas.id, db.tandaReceipts.tandaId));
+
+  $$TandaReceiptsTableProcessedTableManager get tandaReceiptsRefs {
+    final manager = $$TandaReceiptsTableTableManager($_db, $_db.tandaReceipts)
+        .filter((f) => f.tandaId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_tandaReceiptsRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+}
+
+class $$TandasTableFilterComposer
+    extends Composer<_$AppDatabase, $TandasTable> {
+  $$TandasTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get contributionAmount => $composableBuilder(
+      column: $table.contributionAmount,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get frequency => $composableBuilder(
+      column: $table.frequency, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get startDate => $composableBuilder(
+      column: $table.startDate, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get participantCount => $composableBuilder(
+      column: $table.participantCount,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get assignedTurn => $composableBuilder(
+      column: $table.assignedTurn, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get completedContributions => $composableBuilder(
+      column: $table.completedContributions,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get notes => $composableBuilder(
+      column: $table.notes, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  Expression<bool> tandaContributionsRefs(
+      Expression<bool> Function($$TandaContributionsTableFilterComposer f) f) {
+    final $$TandaContributionsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.tandaContributions,
+        getReferencedColumn: (t) => t.tandaId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$TandaContributionsTableFilterComposer(
+              $db: $db,
+              $table: $db.tandaContributions,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
+  Expression<bool> tandaReceiptsRefs(
+      Expression<bool> Function($$TandaReceiptsTableFilterComposer f) f) {
+    final $$TandaReceiptsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.tandaReceipts,
+        getReferencedColumn: (t) => t.tandaId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$TandaReceiptsTableFilterComposer(
+              $db: $db,
+              $table: $db.tandaReceipts,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+}
+
+class $$TandasTableOrderingComposer
+    extends Composer<_$AppDatabase, $TandasTable> {
+  $$TandasTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get contributionAmount => $composableBuilder(
+      column: $table.contributionAmount,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get frequency => $composableBuilder(
+      column: $table.frequency, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get startDate => $composableBuilder(
+      column: $table.startDate, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get participantCount => $composableBuilder(
+      column: $table.participantCount,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get assignedTurn => $composableBuilder(
+      column: $table.assignedTurn,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get completedContributions => $composableBuilder(
+      column: $table.completedContributions,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+      column: $table.notes, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$TandasTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TandasTable> {
+  $$TandasTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<double> get contributionAmount => $composableBuilder(
+      column: $table.contributionAmount, builder: (column) => column);
+
+  GeneratedColumn<String> get frequency =>
+      $composableBuilder(column: $table.frequency, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get startDate =>
+      $composableBuilder(column: $table.startDate, builder: (column) => column);
+
+  GeneratedColumn<int> get participantCount => $composableBuilder(
+      column: $table.participantCount, builder: (column) => column);
+
+  GeneratedColumn<int> get assignedTurn => $composableBuilder(
+      column: $table.assignedTurn, builder: (column) => column);
+
+  GeneratedColumn<int> get completedContributions => $composableBuilder(
+      column: $table.completedContributions, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  Expression<T> tandaContributionsRefs<T extends Object>(
+      Expression<T> Function($$TandaContributionsTableAnnotationComposer a) f) {
+    final $$TandaContributionsTableAnnotationComposer composer =
+        $composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $db.tandaContributions,
+            getReferencedColumn: (t) => t.tandaId,
+            builder: (joinBuilder,
+                    {$addJoinBuilderToRootComposer,
+                    $removeJoinBuilderFromRootComposer}) =>
+                $$TandaContributionsTableAnnotationComposer(
+                  $db: $db,
+                  $table: $db.tandaContributions,
+                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                  joinBuilder: joinBuilder,
+                  $removeJoinBuilderFromRootComposer:
+                      $removeJoinBuilderFromRootComposer,
+                ));
+    return f(composer);
+  }
+
+  Expression<T> tandaReceiptsRefs<T extends Object>(
+      Expression<T> Function($$TandaReceiptsTableAnnotationComposer a) f) {
+    final $$TandaReceiptsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.tandaReceipts,
+        getReferencedColumn: (t) => t.tandaId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$TandaReceiptsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.tandaReceipts,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+}
+
+class $$TandasTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $TandasTable,
+    Tanda,
+    $$TandasTableFilterComposer,
+    $$TandasTableOrderingComposer,
+    $$TandasTableAnnotationComposer,
+    $$TandasTableCreateCompanionBuilder,
+    $$TandasTableUpdateCompanionBuilder,
+    (Tanda, $$TandasTableReferences),
+    Tanda,
+    PrefetchHooks Function(
+        {bool tandaContributionsRefs, bool tandaReceiptsRefs})> {
+  $$TandasTableTableManager(_$AppDatabase db, $TandasTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TandasTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TandasTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TandasTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> name = const Value.absent(),
+            Value<double> contributionAmount = const Value.absent(),
+            Value<String> frequency = const Value.absent(),
+            Value<DateTime> startDate = const Value.absent(),
+            Value<int> participantCount = const Value.absent(),
+            Value<int> assignedTurn = const Value.absent(),
+            Value<int> completedContributions = const Value.absent(),
+            Value<String> status = const Value.absent(),
+            Value<String?> notes = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              TandasCompanion(
+            id: id,
+            name: name,
+            contributionAmount: contributionAmount,
+            frequency: frequency,
+            startDate: startDate,
+            participantCount: participantCount,
+            assignedTurn: assignedTurn,
+            completedContributions: completedContributions,
+            status: status,
+            notes: notes,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String name,
+            required double contributionAmount,
+            required String frequency,
+            required DateTime startDate,
+            required int participantCount,
+            required int assignedTurn,
+            required int completedContributions,
+            required String status,
+            Value<String?> notes = const Value.absent(),
+            required DateTime createdAt,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              TandasCompanion.insert(
+            id: id,
+            name: name,
+            contributionAmount: contributionAmount,
+            frequency: frequency,
+            startDate: startDate,
+            participantCount: participantCount,
+            assignedTurn: assignedTurn,
+            completedContributions: completedContributions,
+            status: status,
+            notes: notes,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) =>
+                  (e.readTable(table), $$TandasTableReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: (
+              {tandaContributionsRefs = false, tandaReceiptsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (tandaContributionsRefs) db.tandaContributions,
+                if (tandaReceiptsRefs) db.tandaReceipts
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (tandaContributionsRefs)
+                    await $_getPrefetchedData<Tanda, $TandasTable,
+                            TandaContribution>(
+                        currentTable: table,
+                        referencedTable: $$TandasTableReferences
+                            ._tandaContributionsRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$TandasTableReferences(db, table, p0)
+                                .tandaContributionsRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.tandaId == item.id),
+                        typedResults: items),
+                  if (tandaReceiptsRefs)
+                    await $_getPrefetchedData<Tanda, $TandasTable,
+                            TandaReceipt>(
+                        currentTable: table,
+                        referencedTable:
+                            $$TandasTableReferences._tandaReceiptsRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$TandasTableReferences(db, table, p0)
+                                .tandaReceiptsRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.tandaId == item.id),
+                        typedResults: items)
+                ];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$TandasTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $TandasTable,
+    Tanda,
+    $$TandasTableFilterComposer,
+    $$TandasTableOrderingComposer,
+    $$TandasTableAnnotationComposer,
+    $$TandasTableCreateCompanionBuilder,
+    $$TandasTableUpdateCompanionBuilder,
+    (Tanda, $$TandasTableReferences),
+    Tanda,
+    PrefetchHooks Function(
+        {bool tandaContributionsRefs, bool tandaReceiptsRefs})>;
+typedef $$TandaContributionsTableCreateCompanionBuilder
+    = TandaContributionsCompanion Function({
+  required String id,
+  required String tandaId,
+  required int sequenceNumber,
+  required double amount,
+  required DateTime scheduledDate,
+  required String status,
+  Value<DateTime?> paidAt,
+  required DateTime createdAt,
+  Value<bool> migratedFromLegacyCounter,
+  Value<String?> notes,
+  Value<String?> linkedTransactionId,
+  Value<int> rowid,
+});
+typedef $$TandaContributionsTableUpdateCompanionBuilder
+    = TandaContributionsCompanion Function({
+  Value<String> id,
+  Value<String> tandaId,
+  Value<int> sequenceNumber,
+  Value<double> amount,
+  Value<DateTime> scheduledDate,
+  Value<String> status,
+  Value<DateTime?> paidAt,
+  Value<DateTime> createdAt,
+  Value<bool> migratedFromLegacyCounter,
+  Value<String?> notes,
+  Value<String?> linkedTransactionId,
+  Value<int> rowid,
+});
+
+final class $$TandaContributionsTableReferences extends BaseReferences<
+    _$AppDatabase, $TandaContributionsTable, TandaContribution> {
+  $$TandaContributionsTableReferences(
+      super.$_db, super.$_table, super.$_typedResult);
+
+  static $TandasTable _tandaIdTable(_$AppDatabase db) => db.tandas.createAlias(
+      $_aliasNameGenerator(db.tandaContributions.tandaId, db.tandas.id));
+
+  $$TandasTableProcessedTableManager get tandaId {
+    final $_column = $_itemColumn<String>('tanda_id')!;
+
+    final manager = $$TandasTableTableManager($_db, $_db.tandas)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_tandaIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+}
+
+class $$TandaContributionsTableFilterComposer
+    extends Composer<_$AppDatabase, $TandaContributionsTable> {
+  $$TandaContributionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get sequenceNumber => $composableBuilder(
+      column: $table.sequenceNumber,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get amount => $composableBuilder(
+      column: $table.amount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get scheduledDate => $composableBuilder(
+      column: $table.scheduledDate, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get paidAt => $composableBuilder(
+      column: $table.paidAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get migratedFromLegacyCounter => $composableBuilder(
+      column: $table.migratedFromLegacyCounter,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get notes => $composableBuilder(
+      column: $table.notes, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get linkedTransactionId => $composableBuilder(
+      column: $table.linkedTransactionId,
+      builder: (column) => ColumnFilters(column));
+
+  $$TandasTableFilterComposer get tandaId {
+    final $$TandasTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.tandaId,
+        referencedTable: $db.tandas,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$TandasTableFilterComposer(
+              $db: $db,
+              $table: $db.tandas,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$TandaContributionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $TandaContributionsTable> {
+  $$TandaContributionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get sequenceNumber => $composableBuilder(
+      column: $table.sequenceNumber,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get amount => $composableBuilder(
+      column: $table.amount, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get scheduledDate => $composableBuilder(
+      column: $table.scheduledDate,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get paidAt => $composableBuilder(
+      column: $table.paidAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get migratedFromLegacyCounter => $composableBuilder(
+      column: $table.migratedFromLegacyCounter,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+      column: $table.notes, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get linkedTransactionId => $composableBuilder(
+      column: $table.linkedTransactionId,
+      builder: (column) => ColumnOrderings(column));
+
+  $$TandasTableOrderingComposer get tandaId {
+    final $$TandasTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.tandaId,
+        referencedTable: $db.tandas,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$TandasTableOrderingComposer(
+              $db: $db,
+              $table: $db.tandas,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$TandaContributionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TandaContributionsTable> {
+  $$TandaContributionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get sequenceNumber => $composableBuilder(
+      column: $table.sequenceNumber, builder: (column) => column);
+
+  GeneratedColumn<double> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get scheduledDate => $composableBuilder(
+      column: $table.scheduledDate, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get paidAt =>
+      $composableBuilder(column: $table.paidAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get migratedFromLegacyCounter => $composableBuilder(
+      column: $table.migratedFromLegacyCounter, builder: (column) => column);
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<String> get linkedTransactionId => $composableBuilder(
+      column: $table.linkedTransactionId, builder: (column) => column);
+
+  $$TandasTableAnnotationComposer get tandaId {
+    final $$TandasTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.tandaId,
+        referencedTable: $db.tandas,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$TandasTableAnnotationComposer(
+              $db: $db,
+              $table: $db.tandas,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$TandaContributionsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $TandaContributionsTable,
+    TandaContribution,
+    $$TandaContributionsTableFilterComposer,
+    $$TandaContributionsTableOrderingComposer,
+    $$TandaContributionsTableAnnotationComposer,
+    $$TandaContributionsTableCreateCompanionBuilder,
+    $$TandaContributionsTableUpdateCompanionBuilder,
+    (TandaContribution, $$TandaContributionsTableReferences),
+    TandaContribution,
+    PrefetchHooks Function({bool tandaId})> {
+  $$TandaContributionsTableTableManager(
+      _$AppDatabase db, $TandaContributionsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TandaContributionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TandaContributionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TandaContributionsTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> tandaId = const Value.absent(),
+            Value<int> sequenceNumber = const Value.absent(),
+            Value<double> amount = const Value.absent(),
+            Value<DateTime> scheduledDate = const Value.absent(),
+            Value<String> status = const Value.absent(),
+            Value<DateTime?> paidAt = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<bool> migratedFromLegacyCounter = const Value.absent(),
+            Value<String?> notes = const Value.absent(),
+            Value<String?> linkedTransactionId = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              TandaContributionsCompanion(
+            id: id,
+            tandaId: tandaId,
+            sequenceNumber: sequenceNumber,
+            amount: amount,
+            scheduledDate: scheduledDate,
+            status: status,
+            paidAt: paidAt,
+            createdAt: createdAt,
+            migratedFromLegacyCounter: migratedFromLegacyCounter,
+            notes: notes,
+            linkedTransactionId: linkedTransactionId,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String tandaId,
+            required int sequenceNumber,
+            required double amount,
+            required DateTime scheduledDate,
+            required String status,
+            Value<DateTime?> paidAt = const Value.absent(),
+            required DateTime createdAt,
+            Value<bool> migratedFromLegacyCounter = const Value.absent(),
+            Value<String?> notes = const Value.absent(),
+            Value<String?> linkedTransactionId = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              TandaContributionsCompanion.insert(
+            id: id,
+            tandaId: tandaId,
+            sequenceNumber: sequenceNumber,
+            amount: amount,
+            scheduledDate: scheduledDate,
+            status: status,
+            paidAt: paidAt,
+            createdAt: createdAt,
+            migratedFromLegacyCounter: migratedFromLegacyCounter,
+            notes: notes,
+            linkedTransactionId: linkedTransactionId,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable(table),
+                    $$TandaContributionsTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: ({tandaId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (tandaId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.tandaId,
+                    referencedTable:
+                        $$TandaContributionsTableReferences._tandaIdTable(db),
+                    referencedColumn: $$TandaContributionsTableReferences
+                        ._tandaIdTable(db)
+                        .id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$TandaContributionsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $TandaContributionsTable,
+    TandaContribution,
+    $$TandaContributionsTableFilterComposer,
+    $$TandaContributionsTableOrderingComposer,
+    $$TandaContributionsTableAnnotationComposer,
+    $$TandaContributionsTableCreateCompanionBuilder,
+    $$TandaContributionsTableUpdateCompanionBuilder,
+    (TandaContribution, $$TandaContributionsTableReferences),
+    TandaContribution,
+    PrefetchHooks Function({bool tandaId})>;
+typedef $$TandaReceiptsTableCreateCompanionBuilder = TandaReceiptsCompanion
+    Function({
+  required String id,
+  required String tandaId,
+  required double amount,
+  required DateTime scheduledDate,
+  required String status,
+  Value<DateTime?> receivedAt,
+  Value<String?> linkedTransactionId,
+  required DateTime createdAt,
+  Value<String?> notes,
+  Value<int> rowid,
+});
+typedef $$TandaReceiptsTableUpdateCompanionBuilder = TandaReceiptsCompanion
+    Function({
+  Value<String> id,
+  Value<String> tandaId,
+  Value<double> amount,
+  Value<DateTime> scheduledDate,
+  Value<String> status,
+  Value<DateTime?> receivedAt,
+  Value<String?> linkedTransactionId,
+  Value<DateTime> createdAt,
+  Value<String?> notes,
+  Value<int> rowid,
+});
+
+final class $$TandaReceiptsTableReferences
+    extends BaseReferences<_$AppDatabase, $TandaReceiptsTable, TandaReceipt> {
+  $$TandaReceiptsTableReferences(
+      super.$_db, super.$_table, super.$_typedResult);
+
+  static $TandasTable _tandaIdTable(_$AppDatabase db) => db.tandas.createAlias(
+      $_aliasNameGenerator(db.tandaReceipts.tandaId, db.tandas.id));
+
+  $$TandasTableProcessedTableManager get tandaId {
+    final $_column = $_itemColumn<String>('tanda_id')!;
+
+    final manager = $$TandasTableTableManager($_db, $_db.tandas)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_tandaIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+}
+
+class $$TandaReceiptsTableFilterComposer
+    extends Composer<_$AppDatabase, $TandaReceiptsTable> {
+  $$TandaReceiptsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get amount => $composableBuilder(
+      column: $table.amount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get scheduledDate => $composableBuilder(
+      column: $table.scheduledDate, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get receivedAt => $composableBuilder(
+      column: $table.receivedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get linkedTransactionId => $composableBuilder(
+      column: $table.linkedTransactionId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get notes => $composableBuilder(
+      column: $table.notes, builder: (column) => ColumnFilters(column));
+
+  $$TandasTableFilterComposer get tandaId {
+    final $$TandasTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.tandaId,
+        referencedTable: $db.tandas,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$TandasTableFilterComposer(
+              $db: $db,
+              $table: $db.tandas,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$TandaReceiptsTableOrderingComposer
+    extends Composer<_$AppDatabase, $TandaReceiptsTable> {
+  $$TandaReceiptsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get amount => $composableBuilder(
+      column: $table.amount, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get scheduledDate => $composableBuilder(
+      column: $table.scheduledDate,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get receivedAt => $composableBuilder(
+      column: $table.receivedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get linkedTransactionId => $composableBuilder(
+      column: $table.linkedTransactionId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+      column: $table.notes, builder: (column) => ColumnOrderings(column));
+
+  $$TandasTableOrderingComposer get tandaId {
+    final $$TandasTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.tandaId,
+        referencedTable: $db.tandas,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$TandasTableOrderingComposer(
+              $db: $db,
+              $table: $db.tandas,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$TandaReceiptsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TandaReceiptsTable> {
+  $$TandaReceiptsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<double> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get scheduledDate => $composableBuilder(
+      column: $table.scheduledDate, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get receivedAt => $composableBuilder(
+      column: $table.receivedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get linkedTransactionId => $composableBuilder(
+      column: $table.linkedTransactionId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  $$TandasTableAnnotationComposer get tandaId {
+    final $$TandasTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.tandaId,
+        referencedTable: $db.tandas,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$TandasTableAnnotationComposer(
+              $db: $db,
+              $table: $db.tandas,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$TandaReceiptsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $TandaReceiptsTable,
+    TandaReceipt,
+    $$TandaReceiptsTableFilterComposer,
+    $$TandaReceiptsTableOrderingComposer,
+    $$TandaReceiptsTableAnnotationComposer,
+    $$TandaReceiptsTableCreateCompanionBuilder,
+    $$TandaReceiptsTableUpdateCompanionBuilder,
+    (TandaReceipt, $$TandaReceiptsTableReferences),
+    TandaReceipt,
+    PrefetchHooks Function({bool tandaId})> {
+  $$TandaReceiptsTableTableManager(_$AppDatabase db, $TandaReceiptsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TandaReceiptsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TandaReceiptsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TandaReceiptsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> tandaId = const Value.absent(),
+            Value<double> amount = const Value.absent(),
+            Value<DateTime> scheduledDate = const Value.absent(),
+            Value<String> status = const Value.absent(),
+            Value<DateTime?> receivedAt = const Value.absent(),
+            Value<String?> linkedTransactionId = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<String?> notes = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              TandaReceiptsCompanion(
+            id: id,
+            tandaId: tandaId,
+            amount: amount,
+            scheduledDate: scheduledDate,
+            status: status,
+            receivedAt: receivedAt,
+            linkedTransactionId: linkedTransactionId,
+            createdAt: createdAt,
+            notes: notes,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String tandaId,
+            required double amount,
+            required DateTime scheduledDate,
+            required String status,
+            Value<DateTime?> receivedAt = const Value.absent(),
+            Value<String?> linkedTransactionId = const Value.absent(),
+            required DateTime createdAt,
+            Value<String?> notes = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              TandaReceiptsCompanion.insert(
+            id: id,
+            tandaId: tandaId,
+            amount: amount,
+            scheduledDate: scheduledDate,
+            status: status,
+            receivedAt: receivedAt,
+            linkedTransactionId: linkedTransactionId,
+            createdAt: createdAt,
+            notes: notes,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable(table),
+                    $$TandaReceiptsTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: ({tandaId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (tandaId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.tandaId,
+                    referencedTable:
+                        $$TandaReceiptsTableReferences._tandaIdTable(db),
+                    referencedColumn:
+                        $$TandaReceiptsTableReferences._tandaIdTable(db).id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$TandaReceiptsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $TandaReceiptsTable,
+    TandaReceipt,
+    $$TandaReceiptsTableFilterComposer,
+    $$TandaReceiptsTableOrderingComposer,
+    $$TandaReceiptsTableAnnotationComposer,
+    $$TandaReceiptsTableCreateCompanionBuilder,
+    $$TandaReceiptsTableUpdateCompanionBuilder,
+    (TandaReceipt, $$TandaReceiptsTableReferences),
+    TandaReceipt,
+    PrefetchHooks Function({bool tandaId})>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -6588,4 +9399,10 @@ class $AppDatabaseManager {
   $$FinancialTaskOverridesTableTableManager get financialTaskOverrides =>
       $$FinancialTaskOverridesTableTableManager(
           _db, _db.financialTaskOverrides);
+  $$TandasTableTableManager get tandas =>
+      $$TandasTableTableManager(_db, _db.tandas);
+  $$TandaContributionsTableTableManager get tandaContributions =>
+      $$TandaContributionsTableTableManager(_db, _db.tandaContributions);
+  $$TandaReceiptsTableTableManager get tandaReceipts =>
+      $$TandaReceiptsTableTableManager(_db, _db.tandaReceipts);
 }

@@ -13,6 +13,9 @@ import '../../../features/subscriptions/domain/subscription_entry.dart'
     as domain;
 import '../../../features/tasks/domain/financial_task.dart' as domain;
 import '../../../features/transactions/domain/transaction_entry.dart' as domain;
+import '../../../features/tandas/domain/tanda.dart' as domain;
+import '../../../features/tandas/domain/tanda_contribution.dart' as domain;
+import '../../../features/tandas/domain/tanda_receipt.dart' as domain;
 import '../app_database.dart' as db;
 import '../finance_snapshot.dart';
 import '../seed/initial_finance_seed.dart';
@@ -45,7 +48,9 @@ class FinanceRepository implements FinanceStorage {
     }
 
     final settings = await _db.select(_db.appSettings).get();
-    final settingsByKey = {for (final setting in settings) setting.key: setting};
+    final settingsByKey = {
+      for (final setting in settings) setting.key: setting,
+    };
     final monthlyIncome = double.tryParse(
           settingsByKey[_monthlyIncomeKey]?.value ?? '',
         ) ??
@@ -89,9 +94,10 @@ class FinanceRepository implements FinanceStorage {
       subscriptions: (await _db.select(_db.subscriptions).get())
           .map(_subscriptionFromRow)
           .toList(),
-      cardMonthlyPayments: (await _db.select(_db.creditCardMonthlyPayments).get())
-          .map(_cardMonthlyPaymentFromRow)
-          .toList(),
+      cardMonthlyPayments:
+          (await _db.select(_db.creditCardMonthlyPayments).get())
+              .map(_cardMonthlyPaymentFromRow)
+              .toList(),
       monthlyExtras: (await _db.select(_db.monthlyExtras).get())
           .map(_monthlyExtraFromRow)
           .toList(),
@@ -105,11 +111,24 @@ class FinanceRepository implements FinanceStorage {
         for (final override in overrides)
           override.taskId: _financialTaskOverrideFromRow(override),
       },
+      tandas: (await _db.select(_db.tandas).get()).map(_tandaFromRow).toList(),
+      tandaContributions: (await (_db.select(_db.tandaContributions)
+                ..orderBy([
+                  (table) => OrderingTerm(expression: table.tandaId),
+                  (table) => OrderingTerm(expression: table.sequenceNumber),
+                ]))
+              .get())
+          .map(_tandaContributionFromRow)
+          .toList(),
+      tandaReceipts: (await _db.select(_db.tandaReceipts).get())
+          .map(_tandaReceiptFromRow)
+          .toList(),
     );
   }
 
   @override
   Future<void> saveSnapshot(FinanceSnapshot snapshot) {
+    _validateTandaConsistency(snapshot);
     return _db.transaction(() async {
       await _db.batch((batch) {
         batch.deleteAll(_db.appSettings);
@@ -124,6 +143,9 @@ class FinanceRepository implements FinanceStorage {
         batch.deleteAll(_db.surplusPlans);
         batch.deleteAll(_db.financialTasks);
         batch.deleteAll(_db.financialTaskOverrides);
+        batch.deleteAll(_db.tandaContributions);
+        batch.deleteAll(_db.tandaReceipts);
+        batch.deleteAll(_db.tandas);
         batch.insertAll(_db.appSettings, [
           db.AppSettingsCompanion.insert(
             key: _monthlyIncomeKey,
@@ -176,6 +198,15 @@ class FinanceRepository implements FinanceStorage {
           snapshot.taskOverrides.entries.map((entry) {
             return _financialTaskOverrideToCompanion(entry.key, entry.value);
           }),
+        );
+        batch.insertAll(_db.tandas, snapshot.tandas.map(_tandaToCompanion));
+        batch.insertAll(
+          _db.tandaContributions,
+          snapshot.tandaContributions.map(_tandaContributionToCompanion),
+        );
+        batch.insertAll(
+          _db.tandaReceipts,
+          snapshot.tandaReceipts.map(_tandaReceiptToCompanion),
         );
       });
     });
@@ -263,8 +294,7 @@ class FinanceRepository implements FinanceStorage {
       saveManualTask(task);
 
   Future<void> deleteManualTask(String id) {
-    return (_db.delete(_db.financialTasks)
-          ..where((task) => task.id.equals(id)))
+    return (_db.delete(_db.financialTasks)..where((task) => task.id.equals(id)))
         .go();
   }
 
@@ -278,7 +308,9 @@ class FinanceRepository implements FinanceStorage {
     );
   }
 
-  Future<void> saveCardMonthlyPayment(domain.CreditCardMonthlyPayment payment) =>
+  Future<void> saveCardMonthlyPayment(
+    domain.CreditCardMonthlyPayment payment,
+  ) =>
       _upsert(
         _db.creditCardMonthlyPayments,
         _cardMonthlyPaymentToCompanion(payment),
@@ -465,7 +497,9 @@ class FinanceRepository implements FinanceStorage {
     );
   }
 
-  db.MonthlyExtrasCompanion _monthlyExtraToCompanion(domain.MonthlyExtra extra) {
+  db.MonthlyExtrasCompanion _monthlyExtraToCompanion(
+    domain.MonthlyExtra extra,
+  ) {
     return db.MonthlyExtrasCompanion.insert(
       id: extra.id,
       name: extra.name,
@@ -578,6 +612,138 @@ class FinanceRepository implements FinanceStorage {
       notes: row.notes,
       completedAt: row.completedAt,
     );
+  }
+
+  db.TandasCompanion _tandaToCompanion(domain.Tanda tanda) {
+    return db.TandasCompanion.insert(
+      id: tanda.id,
+      name: tanda.name,
+      contributionAmount: tanda.contributionAmount,
+      frequency: tanda.frequency.name,
+      startDate: tanda.startDate,
+      participantCount: tanda.participantCount,
+      assignedTurn: tanda.assignedTurn,
+      completedContributions: tanda.completedContributions,
+      status: tanda.status.name,
+      notes: Value(tanda.notes),
+      createdAt: tanda.createdAt,
+    );
+  }
+
+  domain.Tanda _tandaFromRow(db.Tanda row) {
+    return domain.Tanda(
+      id: row.id,
+      name: row.name,
+      contributionAmount: row.contributionAmount,
+      frequency: _enumValue(domain.TandaFrequency.values, row.frequency),
+      startDate: row.startDate,
+      participantCount: row.participantCount,
+      assignedTurn: row.assignedTurn,
+      completedContributions: row.completedContributions,
+      status: _enumValue(domain.TandaStatus.values, row.status),
+      notes: row.notes,
+      createdAt: row.createdAt,
+    );
+  }
+
+  db.TandaContributionsCompanion _tandaContributionToCompanion(
+    domain.TandaContribution contribution,
+  ) {
+    return db.TandaContributionsCompanion.insert(
+      id: contribution.id,
+      tandaId: contribution.tandaId,
+      sequenceNumber: contribution.sequenceNumber,
+      amount: contribution.amount,
+      scheduledDate: contribution.scheduledDate,
+      status: contribution.status.name,
+      paidAt: Value(contribution.paidAt),
+      createdAt: contribution.createdAt,
+      migratedFromLegacyCounter: Value(contribution.migratedFromLegacyCounter),
+      notes: Value(contribution.notes),
+      linkedTransactionId: Value(contribution.linkedTransactionId),
+    );
+  }
+
+  domain.TandaContribution _tandaContributionFromRow(
+    db.TandaContribution row,
+  ) {
+    return domain.TandaContribution(
+      id: row.id,
+      tandaId: row.tandaId,
+      sequenceNumber: row.sequenceNumber,
+      amount: row.amount,
+      scheduledDate: row.scheduledDate,
+      status: _enumValue(
+        domain.TandaContributionStatus.values,
+        row.status,
+      ),
+      paidAt: row.paidAt,
+      createdAt: row.createdAt,
+      migratedFromLegacyCounter: row.migratedFromLegacyCounter,
+      notes: row.notes,
+      linkedTransactionId: row.linkedTransactionId,
+    );
+  }
+
+  db.TandaReceiptsCompanion _tandaReceiptToCompanion(
+    domain.TandaReceipt receipt,
+  ) {
+    return db.TandaReceiptsCompanion.insert(
+      id: receipt.id,
+      tandaId: receipt.tandaId,
+      amount: receipt.amount,
+      scheduledDate: receipt.scheduledDate,
+      status: receipt.status.name,
+      receivedAt: Value(receipt.receivedAt),
+      linkedTransactionId: Value(receipt.linkedTransactionId),
+      createdAt: receipt.createdAt,
+      notes: Value(receipt.notes),
+    );
+  }
+
+  domain.TandaReceipt _tandaReceiptFromRow(db.TandaReceipt row) {
+    return domain.TandaReceipt(
+      id: row.id,
+      tandaId: row.tandaId,
+      amount: row.amount,
+      scheduledDate: row.scheduledDate,
+      status: _enumValue(domain.TandaReceiptStatus.values, row.status),
+      receivedAt: row.receivedAt,
+      linkedTransactionId: row.linkedTransactionId,
+      createdAt: row.createdAt,
+      notes: row.notes,
+    );
+  }
+
+  void _validateTandaConsistency(FinanceSnapshot snapshot) {
+    final tandaIds = snapshot.tandas.map((item) => item.id).toSet();
+    for (final contribution in snapshot.tandaContributions) {
+      if (!tandaIds.contains(contribution.tandaId)) {
+        throw StateError('Una aportacion no puede quedar sin tanda.');
+      }
+    }
+    final receiptTandaIds = <String>{};
+    for (final receipt in snapshot.tandaReceipts) {
+      if (!tandaIds.contains(receipt.tandaId)) {
+        throw StateError('Una recepcion no puede quedar sin tanda.');
+      }
+      if (!receiptTandaIds.add(receipt.tandaId)) {
+        throw StateError('Solo puede existir una recepcion por tanda.');
+      }
+    }
+    if (receiptTandaIds.length != tandaIds.length) {
+      throw StateError('Cada tanda debe tener exactamente una recepcion.');
+    }
+    for (final tanda in snapshot.tandas) {
+      final contributions = snapshot.tandaContributions
+          .where((item) => item.tandaId == tanda.id)
+          .toList();
+      final paid = contributions.where((item) => item.isPaid).length;
+      if (contributions.length != tanda.participantCount ||
+          paid != tanda.completedContributions) {
+        throw StateError('El progreso de la tanda no esta sincronizado.');
+      }
+    }
   }
 
   T _enumValue<T extends Enum>(List<T> values, String name) {

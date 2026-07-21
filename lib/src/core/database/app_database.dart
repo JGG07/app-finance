@@ -13,6 +13,11 @@ import 'tables/planned_expenses_table.dart';
 import 'tables/subscriptions_table.dart';
 import 'tables/surplus_plan_table.dart';
 import 'tables/transactions_table.dart';
+import 'tables/tandas_table.dart';
+import 'tables/tanda_contributions_table.dart';
+import 'tables/tanda_receipts_table.dart';
+import '../../features/tandas/domain/tanda.dart'
+    show TandaFrequency, tandaDateAtInterval;
 
 part 'app_database.g.dart';
 
@@ -30,6 +35,9 @@ part 'app_database.g.dart';
     SurplusPlans,
     FinancialTasks,
     FinancialTaskOverrides,
+    Tandas,
+    TandaContributions,
+    TandaReceipts,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -47,5 +55,67 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 4;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (migrator) => migrator.createAll(),
+        onUpgrade: (migrator, from, to) async {
+          if (from < 2) {
+            await migrator.createTable(tandas);
+          }
+          if (from < 3) {
+            await migrator.createTable(tandaContributions);
+            final legacyTandas = await select(tandas).get();
+            for (final row in legacyTandas) {
+              for (var sequence = 1;
+                  sequence <= row.participantCount;
+                  sequence++) {
+                final paid = sequence <= row.completedContributions;
+                await into(tandaContributions).insert(
+                  TandaContributionsCompanion.insert(
+                    id: '${row.id}-contribution-$sequence',
+                    tandaId: row.id,
+                    sequenceNumber: sequence,
+                    amount: row.contributionAmount,
+                    scheduledDate: tandaDateAtInterval(
+                      row.startDate,
+                      TandaFrequency.values.byName(row.frequency),
+                      sequence - 1,
+                    ),
+                    status: paid ? 'paid' : 'pending',
+                    createdAt: row.createdAt,
+                    migratedFromLegacyCounter: Value(paid),
+                  ),
+                  mode: InsertMode.insertOrIgnore,
+                );
+              }
+            }
+          }
+          if (from < 4) {
+            await migrator.createTable(tandaReceipts);
+            final existingTandas = await select(tandas).get();
+            for (final row in existingTandas) {
+              await into(tandaReceipts).insert(
+                TandaReceiptsCompanion.insert(
+                  id: 'tanda-receipt-${row.id}',
+                  tandaId: row.id,
+                  amount: row.contributionAmount * row.participantCount,
+                  scheduledDate: tandaDateAtInterval(
+                    row.startDate,
+                    TandaFrequency.values.byName(row.frequency),
+                    row.assignedTurn - 1,
+                  ),
+                  status: 'pending',
+                  createdAt: row.createdAt,
+                ),
+                mode: InsertMode.insertOrIgnore,
+              );
+            }
+          }
+        },
+        beforeOpen: (_) async {
+          await customStatement('PRAGMA foreign_keys = ON');
+        },
+      );
 }
