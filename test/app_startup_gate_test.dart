@@ -5,10 +5,10 @@ import 'package:app_finance/src/core/database/finance_snapshot.dart';
 import 'package:app_finance/src/core/database/repositories/finance_repository.dart';
 import 'package:app_finance/src/core/database/seed/initial_finance_seed.dart';
 import 'package:app_finance/src/core/state/finance_state.dart';
-import 'package:app_finance/src/core/theme/app_theme.dart';
 import 'package:app_finance/src/features/dashboard/domain/surplus_plan.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'helpers/test_app.dart';
 
 void main() {
   test('waits for an enqueued save before completing a flush', () async {
@@ -165,9 +165,9 @@ class _TestApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      theme: AppTheme.dark,
-      home: AppStartupGate(
+    return buildTestApp(
+      scaffold: false,
+      child: AppStartupGate(
         financeState: state,
         child: const Scaffold(
           body: Center(child: Text('Contenido principal')),

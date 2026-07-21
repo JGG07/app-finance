@@ -1,12 +1,11 @@
-import 'package:app_finance/src/app/app.dart';
+import 'helpers/test_app.dart';
 import 'package:flutter/material.dart' show Size, TextFormField, ValueKey;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter/material.dart'
-    show FilledButton, PopupMenuButton, TextButton;
+import 'package:flutter/material.dart' show Icons;
 
 void main() {
   testWidgets('renders dashboard shell', (tester) async {
-    await tester.pumpWidget(const AppFinance(enablePersistence: false));
+    await tester.pumpWidget(buildFinanceTestApp());
     await _chooseNoSavingsPlan(tester);
 
     expect(find.text('Resumen financiero'), findsOneWidget);
@@ -25,7 +24,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const AppFinance(enablePersistence: false));
+    await tester.pumpWidget(buildFinanceTestApp());
     await _chooseNoSavingsPlan(tester);
 
     Future<void> openBreakdown(String key) async {
@@ -73,7 +72,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const AppFinance(enablePersistence: false));
+    await tester.pumpWidget(buildFinanceTestApp());
     await _chooseNoSavingsPlan(tester);
     await tester.tap(find.text('Movimientos').last);
     await tester.pumpAndSettle();
@@ -112,7 +111,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const AppFinance(enablePersistence: false));
+    await tester.pumpWidget(buildFinanceTestApp());
     await _chooseNoSavingsPlan(tester);
     await tester.tap(find.text('Plan').last);
     await tester.pumpAndSettle();
@@ -130,9 +129,20 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.tap(find.text('Nueva tanda'));
-    await tester.pumpAndSettle();
+    await scrollToAndTap(
+      tester,
+      find.text('Nueva tanda'),
+    );
     expect(find.text('Nueva tanda'), findsAtLeastNWidgets(1));
+
+    await tester.tap(find.text('Cancelar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Nombre'), findsNothing);
+
+    await scrollToAndTap(
+      tester,
+      find.text('Nueva tanda'),
+    );
 
     await tester.tap(find.text('Guardar'));
     await tester.pumpAndSettle();
@@ -165,37 +175,40 @@ void main() {
     expect(find.text('Recepcion de la tanda'), findsOneWidget);
     expect(find.text('Recepcion pendiente'), findsOneWidget);
     expect(find.textContaining('Monto esperado:'), findsOneWidget);
-    tester
-        .widget<TextButton>(
-          find.widgetWithText(TextButton, 'Ver aportaciones'),
-        )
-        .onPressed!();
-    await tester.pumpAndSettle();
+    await scrollToAndTap(
+      tester,
+      find.text('Ver aportaciones'),
+    );
     expect(find.text('Aportacion 1 de 10'), findsOneWidget);
     expect(find.text('Siguiente aportacion'), findsOneWidget);
     expect(find.text('Pendiente'), findsAtLeastNWidgets(1));
     await tester.tapAt(const Offset(10, 10));
     await tester.pumpAndSettle();
-    tester
-        .widget<FilledButton>(
-          find.widgetWithText(FilledButton, 'Registrar aportacion'),
-        )
-        .onPressed!();
-    await tester.pumpAndSettle();
-    tester
-        .widget<TextButton>(
-          find.widgetWithText(TextButton, 'Ver aportaciones'),
-        )
-        .onPressed!();
-    await tester.pumpAndSettle();
+    await scrollToAndTap(
+      tester,
+      find.text('Registrar aportacion'),
+    );
+    await scrollToAndTap(
+      tester,
+      find.text('Ver aportaciones'),
+    );
     expect(find.text('Movimiento registrado'), findsOneWidget);
     await tester.tapAt(const Offset(10, 10));
     await tester.pumpAndSettle();
-    tester
-        .widget<PopupMenuButton<String>>(
-          find.byType(PopupMenuButton<String>),
-        )
-        .onSelected!('delete');
+    await scrollToAndTap(
+      tester,
+      find.text('Registrar recepcion'),
+    );
+    expect(find.text('Fecha real'), findsOneWidget);
+    await tester.tap(find.text('Confirmar recepcion'));
+    await tester.pumpAndSettle();
+    expect(find.text('Ingreso agregado a Movimientos'), findsOneWidget);
+
+    await scrollToAndTap(
+      tester,
+      find.byIcon(Icons.more_vert),
+    );
+    await tester.tap(find.text('Eliminar'));
     await tester.pumpAndSettle();
     expect(find.text('Eliminar todo'), findsOneWidget);
     expect(find.text('Eliminar y conservar movimientos'), findsOneWidget);

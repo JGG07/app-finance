@@ -13,10 +13,12 @@ import 'router/app_router.dart';
 class AppFinance extends StatefulWidget {
   const AppFinance({
     this.enablePersistence = true,
+    this.themeOverride,
     super.key,
   });
 
   final bool enablePersistence;
+  final ThemeData? themeOverride;
 
   @override
   State<AppFinance> createState() => _AppFinanceState();
@@ -75,8 +77,8 @@ class _AppFinanceState extends State<AppFinance> with WidgetsBindingObserver {
       child: MaterialApp(
         title: 'App Finance',
         debugShowCheckedModeBanner: false,
-        theme: AppTheme.light,
-        darkTheme: AppTheme.dark,
+        theme: widget.themeOverride ?? AppTheme.light,
+        darkTheme: widget.themeOverride ?? AppTheme.dark,
         themeMode: ThemeMode.dark,
         home: AppStartupGate(
           financeState: _financeState,

@@ -1,4 +1,3 @@
-import 'package:app_finance/src/app/app.dart';
 import 'package:app_finance/src/core/domain/finance_period.dart';
 import 'package:app_finance/src/core/state/finance_state.dart';
 import 'package:app_finance/src/features/budgets/domain/budget_category.dart';
@@ -7,6 +6,7 @@ import 'package:app_finance/src/features/plan/domain/financial_advice.dart';
 import 'package:app_finance/src/features/transactions/domain/transaction_entry.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'helpers/test_app.dart';
 
 void main() {
   final july = FinancePeriod(year: 2026, month: 7);
@@ -64,7 +64,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const AppFinance(enablePersistence: false));
+    await tester.pumpWidget(buildFinanceTestApp());
     await tester.pumpAndSettle();
     await tester.tap(find.text('Prefiero continuar sin plan'));
     await tester.pumpAndSettle();

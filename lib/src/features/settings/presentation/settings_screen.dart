@@ -9,7 +9,7 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const AppScreen(
-      children: const [
+      children: [
         AppHeader(
           title: 'Ajustes',
           subtitle: 'Preferencias y configuracion general de la app.',

@@ -24,24 +24,26 @@ class PlanScreen extends StatelessWidget {
           builder: (context, setDialogState) {
             return AlertDialog(
               title: const Text('Cambiar plan'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: SurplusPlanType.values
-                    .where((plan) => plan != SurplusPlanType.unconfigured)
-                    .map((plan) {
-                  return RadioListTile<SurplusPlanType>(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(_planLabel(plan)),
-                    subtitle: Text(_planDescription(plan)),
-                    value: plan,
-                    groupValue: selectedPlan,
-                    onChanged: (value) {
-                      if (value != null) {
-                        setDialogState(() => selectedPlan = value);
-                      }
-                    },
-                  );
-                }).toList(),
+              content: RadioGroup<SurplusPlanType>(
+                groupValue: selectedPlan,
+                onChanged: (value) {
+                  if (value != null) {
+                    setDialogState(() => selectedPlan = value);
+                  }
+                },
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: SurplusPlanType.values
+                      .where((plan) => plan != SurplusPlanType.unconfigured)
+                      .map((plan) {
+                    return RadioListTile<SurplusPlanType>(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(_planLabel(plan)),
+                      subtitle: Text(_planDescription(plan)),
+                      value: plan,
+                    );
+                  }).toList(),
+                ),
               ),
               actions: [
                 TextButton(
@@ -168,7 +170,7 @@ class PlanScreen extends StatelessWidget {
                       _MoneyField(controller: amountController, label: 'Monto'),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<FinancialTaskStatus>(
-                        value: selectedStatus,
+                        initialValue: selectedStatus,
                         decoration: const InputDecoration(
                           labelText: 'Estado',
                           border: OutlineInputBorder(),

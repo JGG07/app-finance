@@ -10,6 +10,7 @@ import 'package:app_finance/src/features/tandas/presentation/tandas_section.dart
 import 'package:app_finance/src/features/transactions/domain/transaction_entry.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'helpers/test_app.dart';
 
 void main() {
   late FinanceState state;
@@ -213,14 +214,11 @@ void main() {
   testWidgets('receipt UI registers, displays and undoes linked income',
       (tester) async {
     await tester.pumpWidget(
-      MaterialApp(
-        theme: ThemeData(splashFactory: NoSplash.splashFactory),
-        home: Scaffold(
-          body: AnimatedBuilder(
-            animation: state,
-            builder: (context, _) => SingleChildScrollView(
-              child: TandasSection(state: state),
-            ),
+      buildTestApp(
+        child: AnimatedBuilder(
+          animation: state,
+          builder: (context, _) => SingleChildScrollView(
+            child: TandasSection(state: state),
           ),
         ),
       ),

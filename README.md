@@ -51,6 +51,27 @@ flutter run
 
 Si `flutter` no esta en tu `PATH`, usa la ruta completa a `flutter.bat`.
 
+## Verificacion local
+
+El proyecto se verifica con Flutter 3.44.0 estable y Dart 3.12.0. Ejecuta:
+
+```sh
+flutter pub get
+dart run build_runner build
+dart format --output=none --set-exit-if-changed lib test
+flutter analyze
+flutter test
+```
+
+Las pruebas se agrupan conceptualmente en dominio, estado, widgets,
+persistencia y migraciones. Las fechas guardadas por Drift conservan precision
+de segundos; las pruebas comparan la fecha logica compartida entre aportaciones
+y movimientos o entre recepciones e ingresos, sin depender de microsegundos.
+
+La persistencia actual guarda snapshots completos. Las mutaciones de negocio
+se prueban como una sola operacion observable, pero reemplazar los snapshots
+por escrituras granulares sigue siendo deuda tecnica.
+
 ## Siguientes pasos recomendados
 
 1. Agregar persistencia local para que nomina, secciones y movimientos no se pierdan al cerrar la app.

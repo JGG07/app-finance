@@ -112,6 +112,17 @@ pruebas disponibles.
 
 ## Registro de avances
 
+### 2026-07-21 - Estabilizacion local y CI
+
+- El entorno reproducible queda fijado en Flutter 3.44.0 estable y Dart 3.12.0.
+- El fallo local de `ink_sparkle.frag` se diagnostico como una incompatibilidad
+  entre el asset Vulkan del SDK local y el backend SkSL de `flutter test`.
+  Los widgets usan un tema comun exclusivo de pruebas con `NoSplash`; los
+  temas de produccion permanecen sin cambios visuales.
+- GitHub Actions verifica formato, analisis y tests en `main` y `dev`.
+- Drift mantiene precision temporal de segundos y la persistencia por snapshots
+  completos continua documentada como deuda tecnica.
+
 ### 2026-07-21 - Recepcion de tandas como ingreso vinculado
 
 - Cada tanda tiene una recepcion esperada persistente e independiente del

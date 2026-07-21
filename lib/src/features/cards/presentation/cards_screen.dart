@@ -227,7 +227,7 @@ class CardsScreen extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       DropdownButtonFormField<String>(
-                        value: selectedCardId,
+                        initialValue: selectedCardId,
                         decoration: const InputDecoration(
                           labelText: 'Tarjeta',
                           border: OutlineInputBorder(),
@@ -444,7 +444,7 @@ class CardsScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
-                      value: selectedCardId,
+                      initialValue: selectedCardId,
                       decoration: const InputDecoration(
                         labelText: 'Se paga con',
                         border: OutlineInputBorder(),
@@ -550,10 +550,8 @@ class CardsScreen extends StatelessWidget {
                 totalMonths > 0 &&
                 paidMonths >= 0 &&
                 paidMonths <= totalMonths;
-            final monthlyPayment =
-                canPreview ? amount / totalMonths : 0.0;
-            final remainingMonths =
-                canPreview ? totalMonths - paidMonths : 0;
+            final monthlyPayment = canPreview ? amount / totalMonths : 0.0;
+            final remainingMonths = canPreview ? totalMonths - paidMonths : 0;
             final remainingAmount = monthlyPayment * remainingMonths;
 
             return AlertDialog(
@@ -586,7 +584,7 @@ class CardsScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 16),
                       DropdownButtonFormField<String>(
-                        value: selectedCardId,
+                        initialValue: selectedCardId,
                         decoration: const InputDecoration(
                           labelText: 'Tarjeta asociada',
                           border: OutlineInputBorder(),
@@ -913,7 +911,10 @@ class CardsScreen extends StatelessWidget {
     );
   }
 
-  void _showInstallmentPurchasesSheet(BuildContext context, FinanceState state) {
+  void _showInstallmentPurchasesSheet(
+    BuildContext context,
+    FinanceState state,
+  ) {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -1121,121 +1122,120 @@ class CardsScreen extends StatelessWidget {
 
     return AppScreen(
       children: [
-          AppHeader(
-            title: 'Tarjetas',
-            subtitle:
-                'Controla deuda, cortes, pagos estimados y mensualidades.',
-            action: IconButton.filled(
-              tooltip: 'Nueva tarjeta',
-              onPressed: () => _showCreditCardDialog(context, state),
-              icon: const Icon(Icons.add),
+        AppHeader(
+          title: 'Tarjetas',
+          subtitle: 'Controla deuda, cortes, pagos estimados y mensualidades.',
+          action: IconButton.filled(
+            tooltip: 'Nueva tarjeta',
+            onPressed: () => _showCreditCardDialog(context, state),
+            icon: const Icon(Icons.add),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        _MonthlyCommitmentCard(
+          amount: monthlyCommitment,
+          installments: state.totalMonthlyInstallmentPayments,
+          subscriptions: state.totalMonthlySubscriptions,
+        ),
+        const SizedBox(height: AppSpacing.md),
+        _MetricGrid(
+          children: [
+            _MetricTile(
+              title: 'Deuda total',
+              value: CurrencyFormatter.format(state.totalCreditCardDebt),
+              icon: Icons.credit_card,
+            ),
+            _MetricTile(
+              title: 'Disponible',
+              value: CurrencyFormatter.format(state.totalAvailableCredit),
+              icon: Icons.lock_open_outlined,
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        if (state.creditCards.isNotEmpty) ...[
+          _QuickActionsCard(
+            onPurchase: () => _showPurchaseDialog(context, state),
+            onSubscriptions: () => _showSubscriptionsSheet(context, state),
+            onInstallments: () => _showInstallmentPurchasesSheet(
+              context,
+              state,
+            ),
+            subscriptionsTotal: state.totalMonthlySubscriptions,
+            subscriptionsCount: state.subscriptions.length,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _InstallmentCommitmentsCard(
+            monthlyAmount: state.totalMonthlyInstallmentPayments,
+            activeCount: state.activeInstallmentPurchaseCount,
+            remainingAmount: state.totalRemainingInstallmentAmount,
+            onView: () => _showInstallmentPurchasesSheet(context, state),
+          ),
+        ],
+        const SizedBox(height: AppSpacing.xxl),
+        AppSectionHeader(
+          title: 'Tus tarjetas',
+          subtitle: 'Saldo, corte, pagos y ultimas compras por tarjeta.',
+          action: AppButton(
+            label: 'Nueva',
+            icon: Icons.add,
+            onPressed: () => _showCreditCardDialog(context, state),
+            variant: AppButtonVariant.secondary,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        if (state.creditCards.isEmpty)
+          AppCard(
+            child: Column(
+              children: [
+                const AppIconBubble(
+                  icon: Icons.credit_card_off_outlined,
+                  size: 48,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  'Todavia no tienes tarjetas registradas.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                const Text(
+                  'Agrega una tarjeta para registrar compras, pagos y suscripciones.',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                AppButton(
+                  label: 'Agregar tarjeta',
+                  icon: Icons.add,
+                  onPressed: () => _showCreditCardDialog(context, state),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: AppSpacing.lg),
-          _MonthlyCommitmentCard(
-            amount: monthlyCommitment,
-            installments: state.totalMonthlyInstallmentPayments,
-            subscriptions: state.totalMonthlySubscriptions,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          _MetricGrid(
-            children: [
-              _MetricTile(
-                title: 'Deuda total',
-                value: CurrencyFormatter.format(state.totalCreditCardDebt),
-                icon: Icons.credit_card,
+        ...state.creditCards.map((card) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+            child: _CreditCardPanel(
+              card: card,
+              purchases: state.purchasesForCard(card.id),
+              subscriptions: state.subscriptionsForCard(card.id),
+              onEdit: () => _showCreditCardDialog(
+                context,
+                state,
+                card: card,
               ),
-              _MetricTile(
-                title: 'Disponible',
-                value: CurrencyFormatter.format(state.totalAvailableCredit),
-                icon: Icons.lock_open_outlined,
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          if (state.creditCards.isNotEmpty) ...[
-            _QuickActionsCard(
-              onPurchase: () => _showPurchaseDialog(context, state),
+              onPay: () => _showPaymentDialog(context, state, card),
               onSubscriptions: () => _showSubscriptionsSheet(context, state),
               onInstallments: () => _showInstallmentPurchasesSheet(
                 context,
                 state,
               ),
-              subscriptionsTotal: state.totalMonthlySubscriptions,
-              subscriptionsCount: state.subscriptions.length,
             ),
-            const SizedBox(height: AppSpacing.md),
-            _InstallmentCommitmentsCard(
-              monthlyAmount: state.totalMonthlyInstallmentPayments,
-              activeCount: state.activeInstallmentPurchaseCount,
-              remainingAmount: state.totalRemainingInstallmentAmount,
-              onView: () => _showInstallmentPurchasesSheet(context, state),
-            ),
-          ],
-          const SizedBox(height: AppSpacing.xxl),
-          AppSectionHeader(
-            title: 'Tus tarjetas',
-            subtitle: 'Saldo, corte, pagos y ultimas compras por tarjeta.',
-            action: AppButton(
-              label: 'Nueva',
-              icon: Icons.add,
-              onPressed: () => _showCreditCardDialog(context, state),
-              variant: AppButtonVariant.secondary,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          if (state.creditCards.isEmpty)
-            AppCard(
-              child: Column(
-                children: [
-                  const AppIconBubble(
-                    icon: Icons.credit_card_off_outlined,
-                    size: 48,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  Text(
-                    'Todavia no tienes tarjetas registradas.',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  const Text(
-                    'Agrega una tarjeta para registrar compras, pagos y suscripciones.',
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  AppButton(
-                    label: 'Agregar tarjeta',
-                    icon: Icons.add,
-                    onPressed: () => _showCreditCardDialog(context, state),
-                  ),
-                ],
-              ),
-            ),
-          ...state.creditCards.map((card) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.lg),
-              child: _CreditCardPanel(
-                card: card,
-                purchases: state.purchasesForCard(card.id),
-                subscriptions: state.subscriptionsForCard(card.id),
-                onEdit: () => _showCreditCardDialog(
-                  context,
-                  state,
-                  card: card,
-                ),
-                onPay: () => _showPaymentDialog(context, state, card),
-                onSubscriptions: () => _showSubscriptionsSheet(context, state),
-                onInstallments: () => _showInstallmentPurchasesSheet(
-                  context,
-                  state,
-                ),
-              ),
-            );
-          }),
-        ],
+          );
+        }),
+      ],
     );
   }
 }
@@ -1649,8 +1649,7 @@ class _InstallmentPurchaseItem extends StatelessWidget {
         amount: purchase.isCompleted
             ? 'Liquidada'
             : CurrencyFormatter.format(purchase.remainingAmount),
-        amountColor:
-            purchase.isCompleted ? colorScheme.onSurfaceVariant : null,
+        amountColor: purchase.isCompleted ? colorScheme.onSurfaceVariant : null,
         status: StatusPill(
           label: purchase.isCompleted ? 'Liquidada' : 'Activa',
           color: purchase.isCompleted

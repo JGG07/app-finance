@@ -7,6 +7,7 @@ import 'package:app_finance/src/features/dashboard/presentation/dashboard_screen
 import 'package:app_finance/src/features/transactions/domain/transaction_entry.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'helpers/test_app.dart';
 
 void main() {
   final july = FinancePeriod(year: 2026, month: 7);
@@ -199,19 +200,17 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SingleChildScrollView(
-            child: IncomeHeroCard(
-              amount: 10000,
-              availableAmount: 5150,
-              antExpenseAmount: 850,
-              antExpensePercent: 12.5,
-              monthLabel: 'Julio 2026',
-              breakdown: const [],
-              onEdit: () {},
-              onBreakdownTap: (_) {},
-            ),
+      buildTestApp(
+        child: SingleChildScrollView(
+          child: IncomeHeroCard(
+            amount: 10000,
+            availableAmount: 5150,
+            antExpenseAmount: 850,
+            antExpensePercent: 12.5,
+            monthLabel: 'Julio 2026',
+            breakdown: const [],
+            onEdit: () {},
+            onBreakdownTap: (_) {},
           ),
         ),
       ),

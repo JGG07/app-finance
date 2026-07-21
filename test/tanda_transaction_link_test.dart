@@ -10,6 +10,7 @@ import 'package:app_finance/src/features/tandas/presentation/tandas_section.dart
 import 'package:app_finance/src/features/transactions/domain/transaction_entry.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'helpers/test_app.dart';
 
 void main() {
   late FinanceState state;
@@ -205,11 +206,8 @@ void main() {
       final loaded = FinanceState(repository: _MemoryStorage(_legacyFixture()));
       await loaded.initialize();
       await tester.pumpWidget(
-        MaterialApp(
-          theme: ThemeData(splashFactory: NoSplash.splashFactory),
-          home: Scaffold(
-            body: SingleChildScrollView(child: TandasSection(state: loaded)),
-          ),
+        buildTestApp(
+          child: SingleChildScrollView(child: TandasSection(state: loaded)),
         ),
       );
       await tester.tap(find.text('Ver aportaciones'));
@@ -233,11 +231,8 @@ void main() {
       );
       await loaded.initialize();
       await tester.pumpWidget(
-        MaterialApp(
-          theme: ThemeData(splashFactory: NoSplash.splashFactory),
-          home: Scaffold(
-            body: SingleChildScrollView(child: TandasSection(state: loaded)),
-          ),
+        buildTestApp(
+          child: SingleChildScrollView(child: TandasSection(state: loaded)),
         ),
       );
       await tester.tap(find.text('Ver aportaciones'));

@@ -3,6 +3,7 @@ import 'package:app_finance/src/core/utils/currency_formatter.dart';
 import 'package:app_finance/src/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'helpers/test_app.dart';
 
 void main() {
   test('chart values ignore negatives and never exceed a full fraction', () {
@@ -41,18 +42,16 @@ void main() {
     ];
 
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: SingleChildScrollView(
-            child: Column(
-              children: [
-                SalaryDistributionChart(
-                  slices: slices,
-                  monthlyIncome: 100,
-                ),
-                StackedProgressBar(slices: slices),
-              ],
-            ),
+      buildTestApp(
+        child: const SingleChildScrollView(
+          child: Column(
+            children: [
+              SalaryDistributionChart(
+                slices: slices,
+                monthlyIncome: 100,
+              ),
+              StackedProgressBar(slices: slices),
+            ],
           ),
         ),
       ),
