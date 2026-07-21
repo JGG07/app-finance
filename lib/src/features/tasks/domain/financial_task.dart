@@ -114,10 +114,10 @@ class FinancialTaskOverride {
       dueDate: dueDate,
       notes: notes,
       completedAt: completedAt,
-      clearActualAmount: actualAmount == null &&
-          status != FinancialTaskStatus.partial,
-      clearCompletedAt: completedAt == null &&
-          status != FinancialTaskStatus.done,
+      clearActualAmount:
+          actualAmount == null && status != FinancialTaskStatus.partial,
+      clearCompletedAt:
+          completedAt == null && status != FinancialTaskStatus.done,
     );
   }
 

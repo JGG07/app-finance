@@ -91,7 +91,8 @@ class CreditCardPurchase {
       return DateTime.now();
     }
 
-    final sameMonthCutDate = _cutDateFor(date.year, date.month, statementCutDay);
+    final sameMonthCutDate =
+        _cutDateFor(date.year, date.month, statementCutDay);
     final purchaseDate = DateTime(date.year, date.month, date.day);
 
     if (!purchaseDate.isAfter(sameMonthCutDate)) {

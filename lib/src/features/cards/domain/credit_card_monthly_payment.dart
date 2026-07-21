@@ -39,10 +39,10 @@ class CreditCardMonthlyPayment {
   }) {
     return CreditCardMonthlyPayment(
       cardId: cardId,
-      manualAmount: clearManualAmount ? null : manualAmount ?? this.manualAmount,
-      confirmedAmount: clearConfirmedAmount
-          ? null
-          : confirmedAmount ?? this.confirmedAmount,
+      manualAmount:
+          clearManualAmount ? null : manualAmount ?? this.manualAmount,
+      confirmedAmount:
+          clearConfirmedAmount ? null : confirmedAmount ?? this.confirmedAmount,
     );
   }
 }
