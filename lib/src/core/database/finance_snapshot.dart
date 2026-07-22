@@ -7,6 +7,8 @@ import '../../features/dashboard/domain/surplus_plan.dart';
 import '../../features/planning/domain/planned_expense.dart';
 import '../../features/subscriptions/domain/subscription_entry.dart';
 import '../../features/tasks/domain/financial_task.dart';
+import '../../features/notifications/domain/notification_preferences.dart';
+import '../../features/notifications/domain/task_reminder.dart';
 import '../../features/transactions/domain/transaction_entry.dart';
 import '../../features/tandas/domain/tanda.dart';
 import '../../features/tandas/domain/tanda_contribution.dart';
@@ -26,6 +28,8 @@ class FinanceSnapshot {
     required this.surplusPlan,
     required this.manualTasks,
     required this.taskOverrides,
+    this.notificationPreferences = const NotificationPreferences(),
+    this.taskReminders = const [],
     required this.tandas,
     required this.tandaContributions,
     required this.tandaReceipts,
@@ -43,6 +47,8 @@ class FinanceSnapshot {
   final SurplusPlan surplusPlan;
   final List<FinancialTask> manualTasks;
   final Map<String, FinancialTaskOverride> taskOverrides;
+  final NotificationPreferences notificationPreferences;
+  final List<TaskReminder> taskReminders;
   final List<Tanda> tandas;
   final List<TandaContribution> tandaContributions;
   final List<TandaReceipt> tandaReceipts;

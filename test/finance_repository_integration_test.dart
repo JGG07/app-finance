@@ -25,7 +25,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('migrates v3 to v4 with one pending receipt and no income', () async {
+  test('migrates v3 to v5 with one pending receipt and no income', () async {
     final directory = await Directory.systemTemp.createTemp('tanda_v3_');
     final file = File('${directory.path}/migration.sqlite');
     AppDatabase? database;
@@ -88,7 +88,7 @@ void main() {
       final receipts = await database.select(database.tandaReceipts).get();
       final contributions =
           await database.select(database.tandaContributions).get();
-      expect(database.schemaVersion, 4);
+      expect(database.schemaVersion, 5);
       expect(receipts, hasLength(1));
       expect(receipts.single.id, receiptIdForTanda('legacy'));
       expect(receipts.single.amount, 3000);
@@ -275,7 +275,7 @@ void main() {
     }
   });
 
-  test('migrates version 1 to version 4 without deleting legacy data',
+  test('migrates version 1 to version 5 without deleting legacy data',
       () async {
     final tempDirectory = await Directory.systemTemp.createTemp(
       'app_finance_migration_test_',
@@ -308,7 +308,7 @@ void main() {
           .getSingle();
       final tandaRows = await database.select(database.tandas).get();
 
-      expect(database.schemaVersion, 4);
+      expect(database.schemaVersion, 5);
       expect(legacy.read<String>('value'), 'preserved');
       expect(tandaRows, isEmpty);
     } finally {

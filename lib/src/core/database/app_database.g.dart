@@ -5879,6 +5879,488 @@ class TandaReceiptsCompanion extends UpdateCompanion<TandaReceipt> {
   }
 }
 
+class $TaskRemindersTable extends TaskReminders
+    with TableInfo<$TaskRemindersTable, TaskReminder> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TaskRemindersTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _taskIdMeta = const VerificationMeta('taskId');
+  @override
+  late final GeneratedColumn<String> taskId = GeneratedColumn<String>(
+      'task_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _notificationIdMeta =
+      const VerificationMeta('notificationId');
+  @override
+  late final GeneratedColumn<int> notificationId = GeneratedColumn<int>(
+      'notification_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'));
+  static const VerificationMeta _enabledMeta =
+      const VerificationMeta('enabled');
+  @override
+  late final GeneratedColumn<bool> enabled = GeneratedColumn<bool>(
+      'enabled', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("enabled" IN (0, 1))'));
+  static const VerificationMeta _modeMeta = const VerificationMeta('mode');
+  @override
+  late final GeneratedColumn<String> mode = GeneratedColumn<String>(
+      'mode', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _hourMeta = const VerificationMeta('hour');
+  @override
+  late final GeneratedColumn<int> hour = GeneratedColumn<int>(
+      'hour', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _minuteMeta = const VerificationMeta('minute');
+  @override
+  late final GeneratedColumn<int> minute = GeneratedColumn<int>(
+      'minute', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _customScheduledAtMeta =
+      const VerificationMeta('customScheduledAt');
+  @override
+  late final GeneratedColumn<DateTime> customScheduledAt =
+      GeneratedColumn<DateTime>('custom_scheduled_at', aliasedName, true,
+          type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [
+        taskId,
+        notificationId,
+        enabled,
+        mode,
+        hour,
+        minute,
+        customScheduledAt,
+        createdAt,
+        updatedAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'task_reminders';
+  @override
+  VerificationContext validateIntegrity(Insertable<TaskReminder> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('task_id')) {
+      context.handle(_taskIdMeta,
+          taskId.isAcceptableOrUnknown(data['task_id']!, _taskIdMeta));
+    } else if (isInserting) {
+      context.missing(_taskIdMeta);
+    }
+    if (data.containsKey('notification_id')) {
+      context.handle(
+          _notificationIdMeta,
+          notificationId.isAcceptableOrUnknown(
+              data['notification_id']!, _notificationIdMeta));
+    } else if (isInserting) {
+      context.missing(_notificationIdMeta);
+    }
+    if (data.containsKey('enabled')) {
+      context.handle(_enabledMeta,
+          enabled.isAcceptableOrUnknown(data['enabled']!, _enabledMeta));
+    } else if (isInserting) {
+      context.missing(_enabledMeta);
+    }
+    if (data.containsKey('mode')) {
+      context.handle(
+          _modeMeta, mode.isAcceptableOrUnknown(data['mode']!, _modeMeta));
+    } else if (isInserting) {
+      context.missing(_modeMeta);
+    }
+    if (data.containsKey('hour')) {
+      context.handle(
+          _hourMeta, hour.isAcceptableOrUnknown(data['hour']!, _hourMeta));
+    } else if (isInserting) {
+      context.missing(_hourMeta);
+    }
+    if (data.containsKey('minute')) {
+      context.handle(_minuteMeta,
+          minute.isAcceptableOrUnknown(data['minute']!, _minuteMeta));
+    } else if (isInserting) {
+      context.missing(_minuteMeta);
+    }
+    if (data.containsKey('custom_scheduled_at')) {
+      context.handle(
+          _customScheduledAtMeta,
+          customScheduledAt.isAcceptableOrUnknown(
+              data['custom_scheduled_at']!, _customScheduledAtMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {taskId};
+  @override
+  TaskReminder map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TaskReminder(
+      taskId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}task_id'])!,
+      notificationId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}notification_id'])!,
+      enabled: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}enabled'])!,
+      mode: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}mode'])!,
+      hour: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}hour'])!,
+      minute: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}minute'])!,
+      customScheduledAt: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}custom_scheduled_at']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+    );
+  }
+
+  @override
+  $TaskRemindersTable createAlias(String alias) {
+    return $TaskRemindersTable(attachedDatabase, alias);
+  }
+}
+
+class TaskReminder extends DataClass implements Insertable<TaskReminder> {
+  final String taskId;
+  final int notificationId;
+  final bool enabled;
+  final String mode;
+  final int hour;
+  final int minute;
+  final DateTime? customScheduledAt;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const TaskReminder(
+      {required this.taskId,
+      required this.notificationId,
+      required this.enabled,
+      required this.mode,
+      required this.hour,
+      required this.minute,
+      this.customScheduledAt,
+      required this.createdAt,
+      required this.updatedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['task_id'] = Variable<String>(taskId);
+    map['notification_id'] = Variable<int>(notificationId);
+    map['enabled'] = Variable<bool>(enabled);
+    map['mode'] = Variable<String>(mode);
+    map['hour'] = Variable<int>(hour);
+    map['minute'] = Variable<int>(minute);
+    if (!nullToAbsent || customScheduledAt != null) {
+      map['custom_scheduled_at'] = Variable<DateTime>(customScheduledAt);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  TaskRemindersCompanion toCompanion(bool nullToAbsent) {
+    return TaskRemindersCompanion(
+      taskId: Value(taskId),
+      notificationId: Value(notificationId),
+      enabled: Value(enabled),
+      mode: Value(mode),
+      hour: Value(hour),
+      minute: Value(minute),
+      customScheduledAt: customScheduledAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(customScheduledAt),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory TaskReminder.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TaskReminder(
+      taskId: serializer.fromJson<String>(json['taskId']),
+      notificationId: serializer.fromJson<int>(json['notificationId']),
+      enabled: serializer.fromJson<bool>(json['enabled']),
+      mode: serializer.fromJson<String>(json['mode']),
+      hour: serializer.fromJson<int>(json['hour']),
+      minute: serializer.fromJson<int>(json['minute']),
+      customScheduledAt:
+          serializer.fromJson<DateTime?>(json['customScheduledAt']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'taskId': serializer.toJson<String>(taskId),
+      'notificationId': serializer.toJson<int>(notificationId),
+      'enabled': serializer.toJson<bool>(enabled),
+      'mode': serializer.toJson<String>(mode),
+      'hour': serializer.toJson<int>(hour),
+      'minute': serializer.toJson<int>(minute),
+      'customScheduledAt': serializer.toJson<DateTime?>(customScheduledAt),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  TaskReminder copyWith(
+          {String? taskId,
+          int? notificationId,
+          bool? enabled,
+          String? mode,
+          int? hour,
+          int? minute,
+          Value<DateTime?> customScheduledAt = const Value.absent(),
+          DateTime? createdAt,
+          DateTime? updatedAt}) =>
+      TaskReminder(
+        taskId: taskId ?? this.taskId,
+        notificationId: notificationId ?? this.notificationId,
+        enabled: enabled ?? this.enabled,
+        mode: mode ?? this.mode,
+        hour: hour ?? this.hour,
+        minute: minute ?? this.minute,
+        customScheduledAt: customScheduledAt.present
+            ? customScheduledAt.value
+            : this.customScheduledAt,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+  TaskReminder copyWithCompanion(TaskRemindersCompanion data) {
+    return TaskReminder(
+      taskId: data.taskId.present ? data.taskId.value : this.taskId,
+      notificationId: data.notificationId.present
+          ? data.notificationId.value
+          : this.notificationId,
+      enabled: data.enabled.present ? data.enabled.value : this.enabled,
+      mode: data.mode.present ? data.mode.value : this.mode,
+      hour: data.hour.present ? data.hour.value : this.hour,
+      minute: data.minute.present ? data.minute.value : this.minute,
+      customScheduledAt: data.customScheduledAt.present
+          ? data.customScheduledAt.value
+          : this.customScheduledAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TaskReminder(')
+          ..write('taskId: $taskId, ')
+          ..write('notificationId: $notificationId, ')
+          ..write('enabled: $enabled, ')
+          ..write('mode: $mode, ')
+          ..write('hour: $hour, ')
+          ..write('minute: $minute, ')
+          ..write('customScheduledAt: $customScheduledAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(taskId, notificationId, enabled, mode, hour,
+      minute, customScheduledAt, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TaskReminder &&
+          other.taskId == this.taskId &&
+          other.notificationId == this.notificationId &&
+          other.enabled == this.enabled &&
+          other.mode == this.mode &&
+          other.hour == this.hour &&
+          other.minute == this.minute &&
+          other.customScheduledAt == this.customScheduledAt &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class TaskRemindersCompanion extends UpdateCompanion<TaskReminder> {
+  final Value<String> taskId;
+  final Value<int> notificationId;
+  final Value<bool> enabled;
+  final Value<String> mode;
+  final Value<int> hour;
+  final Value<int> minute;
+  final Value<DateTime?> customScheduledAt;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const TaskRemindersCompanion({
+    this.taskId = const Value.absent(),
+    this.notificationId = const Value.absent(),
+    this.enabled = const Value.absent(),
+    this.mode = const Value.absent(),
+    this.hour = const Value.absent(),
+    this.minute = const Value.absent(),
+    this.customScheduledAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  TaskRemindersCompanion.insert({
+    required String taskId,
+    required int notificationId,
+    required bool enabled,
+    required String mode,
+    required int hour,
+    required int minute,
+    this.customScheduledAt = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  })  : taskId = Value(taskId),
+        notificationId = Value(notificationId),
+        enabled = Value(enabled),
+        mode = Value(mode),
+        hour = Value(hour),
+        minute = Value(minute),
+        createdAt = Value(createdAt),
+        updatedAt = Value(updatedAt);
+  static Insertable<TaskReminder> custom({
+    Expression<String>? taskId,
+    Expression<int>? notificationId,
+    Expression<bool>? enabled,
+    Expression<String>? mode,
+    Expression<int>? hour,
+    Expression<int>? minute,
+    Expression<DateTime>? customScheduledAt,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (taskId != null) 'task_id': taskId,
+      if (notificationId != null) 'notification_id': notificationId,
+      if (enabled != null) 'enabled': enabled,
+      if (mode != null) 'mode': mode,
+      if (hour != null) 'hour': hour,
+      if (minute != null) 'minute': minute,
+      if (customScheduledAt != null) 'custom_scheduled_at': customScheduledAt,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  TaskRemindersCompanion copyWith(
+      {Value<String>? taskId,
+      Value<int>? notificationId,
+      Value<bool>? enabled,
+      Value<String>? mode,
+      Value<int>? hour,
+      Value<int>? minute,
+      Value<DateTime?>? customScheduledAt,
+      Value<DateTime>? createdAt,
+      Value<DateTime>? updatedAt,
+      Value<int>? rowid}) {
+    return TaskRemindersCompanion(
+      taskId: taskId ?? this.taskId,
+      notificationId: notificationId ?? this.notificationId,
+      enabled: enabled ?? this.enabled,
+      mode: mode ?? this.mode,
+      hour: hour ?? this.hour,
+      minute: minute ?? this.minute,
+      customScheduledAt: customScheduledAt ?? this.customScheduledAt,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (taskId.present) {
+      map['task_id'] = Variable<String>(taskId.value);
+    }
+    if (notificationId.present) {
+      map['notification_id'] = Variable<int>(notificationId.value);
+    }
+    if (enabled.present) {
+      map['enabled'] = Variable<bool>(enabled.value);
+    }
+    if (mode.present) {
+      map['mode'] = Variable<String>(mode.value);
+    }
+    if (hour.present) {
+      map['hour'] = Variable<int>(hour.value);
+    }
+    if (minute.present) {
+      map['minute'] = Variable<int>(minute.value);
+    }
+    if (customScheduledAt.present) {
+      map['custom_scheduled_at'] = Variable<DateTime>(customScheduledAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TaskRemindersCompanion(')
+          ..write('taskId: $taskId, ')
+          ..write('notificationId: $notificationId, ')
+          ..write('enabled: $enabled, ')
+          ..write('mode: $mode, ')
+          ..write('hour: $hour, ')
+          ..write('minute: $minute, ')
+          ..write('customScheduledAt: $customScheduledAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -5903,6 +6385,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $TandaContributionsTable tandaContributions =
       $TandaContributionsTable(this);
   late final $TandaReceiptsTable tandaReceipts = $TandaReceiptsTable(this);
+  late final $TaskRemindersTable taskReminders = $TaskRemindersTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -5922,7 +6405,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         financialTaskOverrides,
         tandas,
         tandaContributions,
-        tandaReceipts
+        tandaReceipts,
+        taskReminders
       ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules(
@@ -9369,6 +9853,243 @@ typedef $$TandaReceiptsTableProcessedTableManager = ProcessedTableManager<
     (TandaReceipt, $$TandaReceiptsTableReferences),
     TandaReceipt,
     PrefetchHooks Function({bool tandaId})>;
+typedef $$TaskRemindersTableCreateCompanionBuilder = TaskRemindersCompanion
+    Function({
+  required String taskId,
+  required int notificationId,
+  required bool enabled,
+  required String mode,
+  required int hour,
+  required int minute,
+  Value<DateTime?> customScheduledAt,
+  required DateTime createdAt,
+  required DateTime updatedAt,
+  Value<int> rowid,
+});
+typedef $$TaskRemindersTableUpdateCompanionBuilder = TaskRemindersCompanion
+    Function({
+  Value<String> taskId,
+  Value<int> notificationId,
+  Value<bool> enabled,
+  Value<String> mode,
+  Value<int> hour,
+  Value<int> minute,
+  Value<DateTime?> customScheduledAt,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
+  Value<int> rowid,
+});
+
+class $$TaskRemindersTableFilterComposer
+    extends Composer<_$AppDatabase, $TaskRemindersTable> {
+  $$TaskRemindersTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get taskId => $composableBuilder(
+      column: $table.taskId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get notificationId => $composableBuilder(
+      column: $table.notificationId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get enabled => $composableBuilder(
+      column: $table.enabled, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get mode => $composableBuilder(
+      column: $table.mode, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get hour => $composableBuilder(
+      column: $table.hour, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get minute => $composableBuilder(
+      column: $table.minute, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get customScheduledAt => $composableBuilder(
+      column: $table.customScheduledAt,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$TaskRemindersTableOrderingComposer
+    extends Composer<_$AppDatabase, $TaskRemindersTable> {
+  $$TaskRemindersTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get taskId => $composableBuilder(
+      column: $table.taskId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get notificationId => $composableBuilder(
+      column: $table.notificationId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get enabled => $composableBuilder(
+      column: $table.enabled, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get mode => $composableBuilder(
+      column: $table.mode, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get hour => $composableBuilder(
+      column: $table.hour, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get minute => $composableBuilder(
+      column: $table.minute, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get customScheduledAt => $composableBuilder(
+      column: $table.customScheduledAt,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$TaskRemindersTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TaskRemindersTable> {
+  $$TaskRemindersTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get taskId =>
+      $composableBuilder(column: $table.taskId, builder: (column) => column);
+
+  GeneratedColumn<int> get notificationId => $composableBuilder(
+      column: $table.notificationId, builder: (column) => column);
+
+  GeneratedColumn<bool> get enabled =>
+      $composableBuilder(column: $table.enabled, builder: (column) => column);
+
+  GeneratedColumn<String> get mode =>
+      $composableBuilder(column: $table.mode, builder: (column) => column);
+
+  GeneratedColumn<int> get hour =>
+      $composableBuilder(column: $table.hour, builder: (column) => column);
+
+  GeneratedColumn<int> get minute =>
+      $composableBuilder(column: $table.minute, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get customScheduledAt => $composableBuilder(
+      column: $table.customScheduledAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$TaskRemindersTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $TaskRemindersTable,
+    TaskReminder,
+    $$TaskRemindersTableFilterComposer,
+    $$TaskRemindersTableOrderingComposer,
+    $$TaskRemindersTableAnnotationComposer,
+    $$TaskRemindersTableCreateCompanionBuilder,
+    $$TaskRemindersTableUpdateCompanionBuilder,
+    (
+      TaskReminder,
+      BaseReferences<_$AppDatabase, $TaskRemindersTable, TaskReminder>
+    ),
+    TaskReminder,
+    PrefetchHooks Function()> {
+  $$TaskRemindersTableTableManager(_$AppDatabase db, $TaskRemindersTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TaskRemindersTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TaskRemindersTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TaskRemindersTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> taskId = const Value.absent(),
+            Value<int> notificationId = const Value.absent(),
+            Value<bool> enabled = const Value.absent(),
+            Value<String> mode = const Value.absent(),
+            Value<int> hour = const Value.absent(),
+            Value<int> minute = const Value.absent(),
+            Value<DateTime?> customScheduledAt = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              TaskRemindersCompanion(
+            taskId: taskId,
+            notificationId: notificationId,
+            enabled: enabled,
+            mode: mode,
+            hour: hour,
+            minute: minute,
+            customScheduledAt: customScheduledAt,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String taskId,
+            required int notificationId,
+            required bool enabled,
+            required String mode,
+            required int hour,
+            required int minute,
+            Value<DateTime?> customScheduledAt = const Value.absent(),
+            required DateTime createdAt,
+            required DateTime updatedAt,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              TaskRemindersCompanion.insert(
+            taskId: taskId,
+            notificationId: notificationId,
+            enabled: enabled,
+            mode: mode,
+            hour: hour,
+            minute: minute,
+            customScheduledAt: customScheduledAt,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$TaskRemindersTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $TaskRemindersTable,
+    TaskReminder,
+    $$TaskRemindersTableFilterComposer,
+    $$TaskRemindersTableOrderingComposer,
+    $$TaskRemindersTableAnnotationComposer,
+    $$TaskRemindersTableCreateCompanionBuilder,
+    $$TaskRemindersTableUpdateCompanionBuilder,
+    (
+      TaskReminder,
+      BaseReferences<_$AppDatabase, $TaskRemindersTable, TaskReminder>
+    ),
+    TaskReminder,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -9405,4 +10126,6 @@ class $AppDatabaseManager {
       $$TandaContributionsTableTableManager(_db, _db.tandaContributions);
   $$TandaReceiptsTableTableManager get tandaReceipts =>
       $$TandaReceiptsTableTableManager(_db, _db.tandaReceipts);
+  $$TaskRemindersTableTableManager get taskReminders =>
+      $$TaskRemindersTableTableManager(_db, _db.taskReminders);
 }

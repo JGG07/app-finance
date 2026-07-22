@@ -6,6 +6,7 @@ import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/plan/presentation/plan_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/transactions/presentation/transactions_screen.dart';
+import '../../core/state/finance_state_provider.dart';
 import '../../shared/presentation/app_scaffold.dart';
 
 class AppRouter extends StatefulWidget {
@@ -17,9 +18,22 @@ class AppRouter extends StatefulWidget {
 
 class _AppRouterState extends State<AppRouter> {
   int _selectedIndex = 0;
+  String? _highlightedTaskId;
 
   @override
   Widget build(BuildContext context) {
+    final state = FinanceStateProvider.of(context);
+    final requestedTaskId = state.pendingTaskNavigationId;
+    if (requestedTaskId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() {
+          _selectedIndex = 4;
+          _highlightedTaskId = requestedTaskId;
+        });
+        state.consumePendingTaskNavigation();
+      });
+    }
     final screens = <Widget>[
       DashboardScreen(
         onViewDebts: () => setState(() => _selectedIndex = 3),
@@ -29,7 +43,7 @@ class _AppRouterState extends State<AppRouter> {
       const TransactionsScreen(),
       const BudgetsScreen(),
       const CardsScreen(),
-      const PlanScreen(),
+      PlanScreen(highlightedTaskId: _highlightedTaskId),
     ];
 
     return AppScaffold(

@@ -16,6 +16,7 @@ import 'tables/transactions_table.dart';
 import 'tables/tandas_table.dart';
 import 'tables/tanda_contributions_table.dart';
 import 'tables/tanda_receipts_table.dart';
+import 'tables/task_reminders_table.dart';
 import '../../features/tandas/domain/tanda.dart'
     show TandaFrequency, tandaDateAtInterval;
 
@@ -38,6 +39,7 @@ part 'app_database.g.dart';
     Tandas,
     TandaContributions,
     TandaReceipts,
+    TaskReminders,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -55,7 +57,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -112,6 +114,9 @@ class AppDatabase extends _$AppDatabase {
                 mode: InsertMode.insertOrIgnore,
               );
             }
+          }
+          if (from < 5) {
+            await migrator.createTable(taskReminders);
           }
         },
         beforeOpen: (_) async {

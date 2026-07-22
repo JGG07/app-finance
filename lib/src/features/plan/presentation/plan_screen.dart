@@ -7,12 +7,16 @@ import '../../../core/state/finance_state_provider.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../shared/presentation/app_design.dart';
 import '../../dashboard/domain/surplus_plan.dart';
+import '../../notifications/domain/task_reminder.dart';
+import '../../notifications/services/task_notification_scheduler.dart';
 import '../../tasks/domain/financial_task.dart';
 import '../../tandas/presentation/tandas_section.dart';
 import '../domain/financial_advice.dart';
 
 class PlanScreen extends StatelessWidget {
-  const PlanScreen({super.key});
+  const PlanScreen({this.highlightedTaskId, super.key});
+
+  final String? highlightedTaskId;
 
   void _showChangePlanDialog(BuildContext context, FinanceState state) {
     var selectedPlan = state.surplusPlan.type;
@@ -138,12 +142,37 @@ class PlanScreen extends StatelessWidget {
     final notesController = TextEditingController(text: task?.notes ?? '');
     final formKey = GlobalKey<FormState>();
     var selectedStatus = task?.status ?? FinancialTaskStatus.pending;
+    var selectedDueDate = task?.dueDate;
+    final existingReminder =
+        task == null ? null : state.taskReminderFor(task.id);
+    var reminderEnabled = existingReminder?.enabled ?? false;
+    var reminderMode = existingReminder?.mode ??
+        state.notificationPreferences.defaultReminderMode;
+    var reminderTime = TimeOfDay(
+      hour: existingReminder?.hour ?? state.notificationPreferences.defaultHour,
+      minute: existingReminder?.minute ??
+          state.notificationPreferences.defaultMinute,
+    );
+    var customScheduledAt = existingReminder?.customScheduledAt;
+    String? reminderValidationError;
 
     showDialog<void>(
       context: context,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
+            final reminderAllowed = selectedDueDate != null &&
+                DateTime(
+                  selectedDueDate!.year,
+                  selectedDueDate!.month,
+                  selectedDueDate!.day,
+                  23,
+                  59,
+                ).isAfter(DateTime.now()) &&
+                selectedStatus != FinancialTaskStatus.done &&
+                selectedStatus != FinancialTaskStatus.skipped &&
+                state.notificationPreferences.enabled &&
+                state.notificationsAvailable;
             return AlertDialog(
               title: Text(task == null ? 'Agregar tarea' : 'Editar tarea'),
               content: Form(
@@ -195,6 +224,149 @@ class PlanScreen extends StatelessWidget {
                         ),
                       ],
                       const SizedBox(height: 12),
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Fecha límite'),
+                        subtitle: Text(
+                          selectedDueDate == null
+                              ? 'Sin fecha límite'
+                              : _shortDate(selectedDueDate!),
+                        ),
+                        trailing: Wrap(
+                          children: [
+                            if (selectedDueDate != null)
+                              IconButton(
+                                tooltip: 'Limpiar fecha',
+                                onPressed: () => setDialogState(() {
+                                  selectedDueDate = null;
+                                  reminderEnabled = false;
+                                }),
+                                icon: const Icon(Icons.clear),
+                              ),
+                            IconButton(
+                              tooltip: 'Seleccionar fecha',
+                              onPressed: () async {
+                                final selected = await showDatePicker(
+                                  context: context,
+                                  initialDate:
+                                      selectedDueDate ?? DateTime.now(),
+                                  firstDate: DateTime(2020),
+                                  lastDate: DateTime(2100),
+                                );
+                                if (selected != null) {
+                                  setDialogState(
+                                    () => selectedDueDate = selected,
+                                  );
+                                }
+                              },
+                              icon: const Icon(Icons.calendar_month_outlined),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SwitchListTile.adaptive(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Recordarme'),
+                        subtitle: reminderAllowed
+                            ? null
+                            : const Text(
+                                'Requiere fecha, tarea pendiente, permiso y recordatorios generales.',
+                              ),
+                        value: reminderEnabled && reminderAllowed,
+                        onChanged: reminderAllowed
+                            ? (value) => setDialogState(
+                                  () => reminderEnabled = value,
+                                )
+                            : null,
+                      ),
+                      if (reminderEnabled && reminderAllowed) ...[
+                        DropdownButtonFormField<TaskReminderMode>(
+                          initialValue: reminderMode,
+                          decoration: const InputDecoration(
+                            labelText: 'Avisarme',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: TaskReminderMode.values.map((mode) {
+                            return DropdownMenuItem(
+                              value: mode,
+                              child: Text(_reminderModeLabel(mode)),
+                            );
+                          }).toList(),
+                          onChanged: (mode) {
+                            if (mode != null) {
+                              setDialogState(() {
+                                reminderMode = mode;
+                                reminderValidationError = null;
+                              });
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(Icons.schedule_outlined),
+                          title: Text(
+                            reminderMode == TaskReminderMode.custom
+                                ? 'Fecha y hora personalizada'
+                                : 'Hora: ${reminderTime.format(context)}',
+                          ),
+                          subtitle: reminderMode == TaskReminderMode.custom
+                              ? Text(
+                                  customScheduledAt == null
+                                      ? 'Sin configurar'
+                                      : '${_shortDate(customScheduledAt!)} ${TimeOfDay.fromDateTime(customScheduledAt!).format(context)}',
+                                )
+                              : null,
+                          onTap: () async {
+                            if (reminderMode == TaskReminderMode.custom) {
+                              final date = await showDatePicker(
+                                context: context,
+                                initialDate:
+                                    customScheduledAt ?? DateTime.now(),
+                                firstDate: DateUtils.dateOnly(DateTime.now()),
+                                lastDate: DateUtils.dateOnly(selectedDueDate!),
+                              );
+                              if (date == null || !context.mounted) return;
+                              final time = await showTimePicker(
+                                context: context,
+                                initialTime: customScheduledAt == null
+                                    ? reminderTime
+                                    : TimeOfDay.fromDateTime(
+                                        customScheduledAt!,
+                                      ),
+                              );
+                              if (time != null) {
+                                setDialogState(() {
+                                  customScheduledAt = DateTime(
+                                    date.year,
+                                    date.month,
+                                    date.day,
+                                    time.hour,
+                                    time.minute,
+                                  );
+                                  reminderValidationError = null;
+                                });
+                              }
+                            } else {
+                              final time = await showTimePicker(
+                                context: context,
+                                initialTime: reminderTime,
+                              );
+                              if (time != null) {
+                                setDialogState(() => reminderTime = time);
+                              }
+                            }
+                          },
+                        ),
+                        if (reminderValidationError != null)
+                          Text(
+                            reminderValidationError!,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                          ),
+                        const SizedBox(height: 12),
+                      ],
                       TextFormField(
                         controller: notesController,
                         minLines: 2,
@@ -222,15 +394,32 @@ class PlanScreen extends StatelessWidget {
                               ? double.parse(actualAmountController.text.trim())
                               : null;
 
-                      if (task == null) {
-                        state.addManualFinancialTask(
-                          title: titleController.text,
-                          amount: amount,
-                          notes: notesController.text,
-                          status: selectedStatus,
-                          actualAmount: actualAmount,
-                        );
-                      } else {
+                      if (reminderEnabled &&
+                          reminderMode == TaskReminderMode.custom &&
+                          (customScheduledAt == null ||
+                              !isValidCustomReminderDate(
+                                scheduledAt: customScheduledAt!,
+                                dueDate: selectedDueDate!,
+                                now: DateTime.now(),
+                              ))) {
+                        setDialogState(() {
+                          reminderValidationError =
+                              'El recordatorio debe ser futuro y no posterior a la fecha límite.';
+                        });
+                        return;
+                      }
+
+                      final taskId = task == null
+                          ? state.addManualFinancialTask(
+                              title: titleController.text,
+                              amount: amount,
+                              notes: notesController.text,
+                              status: selectedStatus,
+                              actualAmount: actualAmount,
+                              dueDate: selectedDueDate,
+                            )
+                          : task.id;
+                      if (task != null) {
                         state.updateFinancialTask(
                           task.id,
                           title: titleController.text.trim(),
@@ -238,6 +427,19 @@ class PlanScreen extends StatelessWidget {
                           status: selectedStatus,
                           actualAmount: actualAmount,
                           notes: notesController.text,
+                          dueDate: selectedDueDate,
+                          clearDueDate: selectedDueDate == null,
+                        );
+                      }
+                      if (taskId != null &&
+                          (reminderEnabled || existingReminder != null)) {
+                        state.updateTaskReminder(
+                          taskId,
+                          enabled: reminderEnabled,
+                          mode: reminderMode,
+                          hour: reminderTime.hour,
+                          minute: reminderTime.minute,
+                          customScheduledAt: customScheduledAt,
                         );
                       }
                       Navigator.of(context).pop();
@@ -398,7 +600,9 @@ class PlanScreen extends StatelessWidget {
         _PlanProgressCard(progress: taskProgress),
         const SizedBox(height: AppSpacing.lg),
         FinancialTasksSection(
+          state: state,
           tasks: tasks,
+          highlightedTaskId: highlightedTaskId,
           progress: taskProgress,
           onAddTask: () => _showTaskDialog(context, state),
           onViewAdvice: () => _showAdviceSheet(context, state),
@@ -476,6 +680,21 @@ class PlanScreen extends StatelessWidget {
       FinancialTaskStatus.partial => 'Parcial',
       FinancialTaskStatus.skipped => 'Omitida',
     };
+  }
+
+  static String _reminderModeLabel(TaskReminderMode mode) {
+    return switch (mode) {
+      TaskReminderMode.sameDay => 'El mismo día',
+      TaskReminderMode.oneDayBefore => '1 día antes',
+      TaskReminderMode.threeDaysBefore => '3 días antes',
+      TaskReminderMode.custom => 'Personalizado',
+    };
+  }
+
+  static String _shortDate(DateTime date) {
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    return '$day/$month/${date.year}';
   }
 }
 
@@ -1011,7 +1230,9 @@ class _QuickSummaryTile extends StatelessWidget {
 
 class FinancialTasksSection extends StatelessWidget {
   const FinancialTasksSection({
+    required this.state,
     required this.tasks,
+    required this.highlightedTaskId,
     required this.progress,
     required this.onAddTask,
     required this.onViewAdvice,
@@ -1021,7 +1242,9 @@ class FinancialTasksSection extends StatelessWidget {
     super.key,
   });
 
+  final FinanceState state;
   final List<FinancialTask> tasks;
+  final String? highlightedTaskId;
   final FinancialTaskProgress progress;
   final VoidCallback onAddTask;
   final VoidCallback onViewAdvice;
@@ -1065,6 +1288,14 @@ class FinancialTasksSection extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 18),
+                if (tasks.isNotEmpty &&
+                    (!state.notificationPreferences.enabled ||
+                        state.notificationPermissionStatus ==
+                            NotificationPermissionStatus.blocked) &&
+                    !state.notificationPreferences.discoveryCardDismissed) ...[
+                  _NotificationDiscoveryCard(state: state),
+                  const SizedBox(height: 14),
+                ],
                 Container(
                   decoration: BoxDecoration(
                     color: AppColors.surface.withAlpha(130),
@@ -1076,6 +1307,12 @@ class FinancialTasksSection extends StatelessWidget {
                       for (var index = 0; index < tasks.length; index++)
                         FinancialTaskTile(
                           task: tasks[index],
+                          highlighted: tasks[index].id == highlightedTaskId,
+                          reminderLabel: _taskReminderLabel(
+                            context,
+                            state,
+                            tasks[index],
+                          ),
                           isLast: index == tasks.length - 1,
                           onToggle: (isDone) {
                             onToggleTask(tasks[index], isDone);
@@ -1105,6 +1342,84 @@ class FinancialTasksSection extends StatelessWidget {
       ),
     );
   }
+
+  static String? _taskReminderLabel(
+    BuildContext context,
+    FinanceState state,
+    FinancialTask task,
+  ) {
+    final reminder = state.taskReminderFor(task.id);
+    if (reminder == null || !reminder.enabled) return null;
+    if (!state.notificationPreferences.enabled ||
+        !state.notificationsAvailable) {
+      return 'Recordatorio pausado';
+    }
+    final scheduledAt = reminder.scheduledAtFor(task.dueDate);
+    if (scheduledAt == null || !scheduledAt.isAfter(DateTime.now())) {
+      return 'Recordatorio vencido';
+    }
+    final date = '${scheduledAt.day.toString().padLeft(2, '0')}/'
+        '${scheduledAt.month.toString().padLeft(2, '0')}';
+    return '$date, ${TimeOfDay.fromDateTime(scheduledAt).format(context)}';
+  }
+}
+
+class _NotificationDiscoveryCard extends StatelessWidget {
+  const _NotificationDiscoveryCard({required this.state});
+
+  final FinanceState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final blocked = state.notificationPermissionStatus ==
+        NotificationPermissionStatus.blocked;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withAlpha(18),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primary.withAlpha(90)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            blocked
+                ? 'Las notificaciones están bloqueadas'
+                : 'No olvides tus pendientes',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            blocked
+                ? 'Actívalas desde los ajustes del teléfono para recibir recordatorios de tus tareas.'
+                : 'Activa recordatorios para recibir un aviso antes de que venzan tus tareas financieras.',
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            children: [
+              FilledButton.tonal(
+                onPressed: blocked
+                    ? state.openNotificationSystemSettings
+                    : state.enableTaskReminders,
+                child:
+                    Text(blocked ? 'Abrir ajustes' : 'Activar recordatorios'),
+              ),
+              if (!blocked)
+                TextButton(
+                  onPressed: state.dismissNotificationDiscoveryCard,
+                  child: const Text('Ahora no'),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class FinancialTaskTile extends StatelessWidget {
@@ -1113,6 +1428,8 @@ class FinancialTaskTile extends StatelessWidget {
     required this.onToggle,
     required this.onEdit,
     required this.onStatusSelected,
+    required this.reminderLabel,
+    this.highlighted = false,
     this.isLast = false,
     super.key,
   });
@@ -1121,6 +1438,8 @@ class FinancialTaskTile extends StatelessWidget {
   final ValueChanged<bool> onToggle;
   final VoidCallback onEdit;
   final ValueChanged<FinancialTaskStatus> onStatusSelected;
+  final String? reminderLabel;
+  final bool highlighted;
   final bool isLast;
 
   @override
@@ -1144,6 +1463,7 @@ class FinancialTaskTile extends StatelessWidget {
 
         return DecoratedBox(
           decoration: BoxDecoration(
+            color: highlighted ? AppColors.primary.withAlpha(18) : null,
             border: Border(
               bottom: isLast
                   ? BorderSide.none
@@ -1208,6 +1528,7 @@ class FinancialTaskTile extends StatelessWidget {
                           dueLabel: dueLabel,
                           statusLabel: statusLabel,
                           statusColor: statusColor,
+                          reminderLabel: reminderLabel,
                           onStatusSelected: onStatusSelected,
                         )
                       : _RegularTaskInfo(
@@ -1218,6 +1539,7 @@ class FinancialTaskTile extends StatelessWidget {
                           dueLabel: dueLabel,
                           statusLabel: statusLabel,
                           statusColor: statusColor,
+                          reminderLabel: reminderLabel,
                           onStatusSelected: onStatusSelected,
                         ),
                 ),
@@ -1335,6 +1657,7 @@ class _CompactTaskInfo extends StatelessWidget {
     required this.dueLabel,
     required this.statusLabel,
     required this.statusColor,
+    required this.reminderLabel,
     required this.onStatusSelected,
   });
 
@@ -1345,6 +1668,7 @@ class _CompactTaskInfo extends StatelessWidget {
   final String dueLabel;
   final String statusLabel;
   final Color statusColor;
+  final String? reminderLabel;
   final ValueChanged<FinancialTaskStatus> onStatusSelected;
 
   @override
@@ -1371,6 +1695,10 @@ class _CompactTaskInfo extends StatelessWidget {
             color: AppColors.textSecondary,
           ),
         ),
+        if (reminderLabel != null) ...[
+          const SizedBox(height: 3),
+          _ReminderIndicator(label: reminderLabel!),
+        ],
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
@@ -1405,6 +1733,7 @@ class _RegularTaskInfo extends StatelessWidget {
     required this.dueLabel,
     required this.statusLabel,
     required this.statusColor,
+    required this.reminderLabel,
     required this.onStatusSelected,
   });
 
@@ -1415,6 +1744,7 @@ class _RegularTaskInfo extends StatelessWidget {
   final String dueLabel;
   final String statusLabel;
   final Color statusColor;
+  final String? reminderLabel;
   final ValueChanged<FinancialTaskStatus> onStatusSelected;
 
   @override
@@ -1444,6 +1774,10 @@ class _RegularTaskInfo extends StatelessWidget {
                   color: AppColors.textSecondary,
                 ),
               ),
+              if (reminderLabel != null) ...[
+                const SizedBox(height: 3),
+                _ReminderIndicator(label: reminderLabel!),
+              ],
             ],
           ),
         ),
@@ -1465,6 +1799,37 @@ class _RegularTaskInfo extends StatelessWidget {
               onSelected: onStatusSelected,
             ),
           ],
+        ),
+      ],
+    );
+  }
+}
+
+class _ReminderIndicator extends StatelessWidget {
+  const _ReminderIndicator({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(
+          Icons.notifications_active_outlined,
+          size: 14,
+          color: AppColors.primary,
+        ),
+        const SizedBox(width: 4),
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppColors.primary,
+                ),
+          ),
         ),
       ],
     );

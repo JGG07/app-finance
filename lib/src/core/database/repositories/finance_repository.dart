@@ -12,6 +12,9 @@ import '../../../features/planning/domain/planned_expense.dart' as domain;
 import '../../../features/subscriptions/domain/subscription_entry.dart'
     as domain;
 import '../../../features/tasks/domain/financial_task.dart' as domain;
+import '../../../features/notifications/domain/notification_preferences.dart'
+    as domain;
+import '../../../features/notifications/domain/task_reminder.dart' as domain;
 import '../../../features/transactions/domain/transaction_entry.dart' as domain;
 import '../../../features/tandas/domain/tanda.dart' as domain;
 import '../../../features/tandas/domain/tanda_contribution.dart' as domain;
@@ -34,6 +37,12 @@ class FinanceRepository implements FinanceStorage {
   static const _monthlyIncomeKey = 'monthly_income';
   static const _seededKey = 'seeded';
   static const _surplusPlanId = 'current';
+  static const _notificationsEnabledKey = 'notifications_enabled';
+  static const _notificationsDefaultModeKey = 'notifications_default_mode';
+  static const _notificationsDefaultHourKey = 'notifications_default_hour';
+  static const _notificationsDefaultMinuteKey = 'notifications_default_minute';
+  static const _notificationsDiscoveryDismissedKey =
+      'notifications_discovery_dismissed';
 
   @override
   Future<FinanceSnapshot> loadSnapshot() async {
@@ -111,6 +120,26 @@ class FinanceRepository implements FinanceStorage {
         for (final override in overrides)
           override.taskId: _financialTaskOverrideFromRow(override),
       },
+      notificationPreferences: domain.NotificationPreferences(
+        enabled: settingsByKey[_notificationsEnabledKey]?.value == 'true',
+        defaultReminderMode: domain.TaskReminderMode.values.byName(
+          settingsByKey[_notificationsDefaultModeKey]?.value ??
+              domain.TaskReminderMode.sameDay.name,
+        ),
+        defaultHour: int.tryParse(
+              settingsByKey[_notificationsDefaultHourKey]?.value ?? '',
+            ) ??
+            9,
+        defaultMinute: int.tryParse(
+              settingsByKey[_notificationsDefaultMinuteKey]?.value ?? '',
+            ) ??
+            0,
+        discoveryCardDismissed:
+            settingsByKey[_notificationsDiscoveryDismissedKey]?.value == 'true',
+      ),
+      taskReminders: (await _db.select(_db.taskReminders).get())
+          .map(_taskReminderFromRow)
+          .toList(),
       tandas: (await _db.select(_db.tandas).get()).map(_tandaFromRow).toList(),
       tandaContributions: (await (_db.select(_db.tandaContributions)
                 ..orderBy([
@@ -129,6 +158,16 @@ class FinanceRepository implements FinanceStorage {
   @override
   Future<void> saveSnapshot(FinanceSnapshot snapshot) {
     _validateTandaConsistency(snapshot);
+    final reminderTaskIds = <String>{};
+    final notificationIds = <int>{};
+    for (final reminder in snapshot.taskReminders) {
+      if (!reminderTaskIds.add(reminder.taskId) ||
+          !notificationIds.add(reminder.notificationId)) {
+        throw StateError(
+          'Los recordatorios de tareas contienen IDs repetidos.',
+        );
+      }
+    }
     return _db.transaction(() async {
       await _db.batch((batch) {
         batch.deleteAll(_db.appSettings);
@@ -143,6 +182,7 @@ class FinanceRepository implements FinanceStorage {
         batch.deleteAll(_db.surplusPlans);
         batch.deleteAll(_db.financialTasks);
         batch.deleteAll(_db.financialTaskOverrides);
+        batch.deleteAll(_db.taskReminders);
         batch.deleteAll(_db.tandaContributions);
         batch.deleteAll(_db.tandaReceipts);
         batch.deleteAll(_db.tandas);
@@ -152,6 +192,27 @@ class FinanceRepository implements FinanceStorage {
             value: snapshot.monthlyIncome.toString(),
           ),
           db.AppSettingsCompanion.insert(key: _seededKey, value: 'true'),
+          db.AppSettingsCompanion.insert(
+            key: _notificationsEnabledKey,
+            value: snapshot.notificationPreferences.enabled.toString(),
+          ),
+          db.AppSettingsCompanion.insert(
+            key: _notificationsDefaultModeKey,
+            value: snapshot.notificationPreferences.defaultReminderMode.name,
+          ),
+          db.AppSettingsCompanion.insert(
+            key: _notificationsDefaultHourKey,
+            value: snapshot.notificationPreferences.defaultHour.toString(),
+          ),
+          db.AppSettingsCompanion.insert(
+            key: _notificationsDefaultMinuteKey,
+            value: snapshot.notificationPreferences.defaultMinute.toString(),
+          ),
+          db.AppSettingsCompanion.insert(
+            key: _notificationsDiscoveryDismissedKey,
+            value: snapshot.notificationPreferences.discoveryCardDismissed
+                .toString(),
+          ),
         ]);
         batch.insertAll(
           _db.budgetCategories,
@@ -198,6 +259,10 @@ class FinanceRepository implements FinanceStorage {
           snapshot.taskOverrides.entries.map((entry) {
             return _financialTaskOverrideToCompanion(entry.key, entry.value);
           }),
+        );
+        batch.insertAll(
+          _db.taskReminders,
+          snapshot.taskReminders.map(_taskReminderToCompanion),
         );
         batch.insertAll(_db.tandas, snapshot.tandas.map(_tandaToCompanion));
         batch.insertAll(
@@ -611,6 +676,36 @@ class FinanceRepository implements FinanceStorage {
       dueDate: row.dueDate,
       notes: row.notes,
       completedAt: row.completedAt,
+    );
+  }
+
+  db.TaskRemindersCompanion _taskReminderToCompanion(
+    domain.TaskReminder reminder,
+  ) {
+    return db.TaskRemindersCompanion.insert(
+      taskId: reminder.taskId,
+      notificationId: reminder.notificationId,
+      enabled: reminder.enabled,
+      mode: reminder.mode.name,
+      hour: reminder.hour,
+      minute: reminder.minute,
+      customScheduledAt: Value(reminder.customScheduledAt),
+      createdAt: reminder.createdAt,
+      updatedAt: reminder.updatedAt,
+    );
+  }
+
+  domain.TaskReminder _taskReminderFromRow(db.TaskReminder row) {
+    return domain.TaskReminder(
+      taskId: row.taskId,
+      notificationId: row.notificationId,
+      enabled: row.enabled,
+      mode: _enumValue(domain.TaskReminderMode.values, row.mode),
+      hour: row.hour,
+      minute: row.minute,
+      customScheduledAt: row.customScheduledAt,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
     );
   }
 

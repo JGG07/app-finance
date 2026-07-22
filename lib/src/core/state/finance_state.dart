@@ -11,6 +11,9 @@ import '../../features/cards/domain/credit_card_monthly_payment.dart';
 import '../../features/cards/domain/credit_card_purchase.dart';
 import '../../features/dashboard/domain/surplus_plan.dart';
 import '../../features/planning/domain/planned_expense.dart';
+import '../../features/notifications/domain/notification_preferences.dart';
+import '../../features/notifications/domain/task_reminder.dart';
+import '../../features/notifications/services/task_notification_scheduler.dart';
 import '../../features/subscriptions/domain/subscription_entry.dart';
 import '../../features/tasks/domain/financial_task.dart';
 import '../../features/transactions/domain/transaction_entry.dart';
@@ -21,13 +24,18 @@ import '../../features/tandas/domain/tanda_receipt.dart';
 import '../../features/tandas/domain/tanda_receipt_link.dart';
 
 class FinanceState extends ChangeNotifier {
-  FinanceState({FinanceStorage? repository})
-      : _repository = repository,
+  FinanceState({
+    FinanceStorage? repository,
+    TaskNotificationScheduler? notificationScheduler,
+  })  : _notificationScheduler =
+            notificationScheduler ?? const NoopTaskNotificationScheduler(),
+        _repository = repository,
         _isInitialized = repository == null {
     _applySnapshot(initialFinanceSeed());
   }
 
   final FinanceStorage? _repository;
+  final TaskNotificationScheduler _notificationScheduler;
 
   late double _monthlyIncome;
   late List<BudgetCategory> _categories;
@@ -41,11 +49,19 @@ class FinanceState extends ChangeNotifier {
   late SurplusPlan _surplusPlan;
   late List<FinancialTask> _manualTasks;
   late Map<String, FinancialTaskOverride> _taskOverrides;
+  late NotificationPreferences _notificationPreferences;
+  late List<TaskReminder> _taskReminders;
   late List<Tanda> _tandas;
   late List<TandaContribution> _tandaContributions;
   late List<TandaReceipt> _tandaReceipts;
   Future<void>? _initialization;
   Future<void> _pendingSave = Future.value();
+  Future<void> _pendingNotificationWork = Future.value();
+  bool _notificationSchedulerInitialized = false;
+  NotificationPermissionStatus _notificationPermissionStatus =
+      NotificationPermissionStatus.notConfigured;
+  String? _notificationError;
+  String? _pendingTaskNavigationId;
   bool _isLoading = false;
   bool _isInitialized;
   bool _isRetryingSave = false;
@@ -59,6 +75,15 @@ class FinanceState extends ChangeNotifier {
   bool get isRetryingSave => _isRetryingSave;
   String? get loadError => _loadError;
   String? get saveError => _saveError;
+  NotificationPreferences get notificationPreferences =>
+      _notificationPreferences;
+  List<TaskReminder> get taskReminders => List.unmodifiable(_taskReminders);
+  NotificationPermissionStatus get notificationPermissionStatus =>
+      _notificationPermissionStatus;
+  String? get notificationError => _notificationError;
+  bool get notificationsAvailable =>
+      _notificationPermissionStatus == NotificationPermissionStatus.granted;
+  String? get pendingTaskNavigationId => _pendingTaskNavigationId;
   double get monthlyIncome => _monthlyIncome;
   FinancePeriod get selectedPeriod => _selectedPeriod;
   List<BudgetCategory> get categories => List.unmodifiable(
@@ -533,7 +558,11 @@ class FinanceState extends ChangeNotifier {
   Future<void> initialize() {
     final repository = _repository;
     if (repository == null) {
-      return Future.value();
+      if (_notificationSchedulerInitialized ||
+          !_notificationScheduler.isSupported) {
+        return Future.value();
+      }
+      return _initializeNotificationScheduler();
     }
     if (_isLoading) {
       return _initialization ?? Future.value();
@@ -552,6 +581,7 @@ class FinanceState extends ChangeNotifier {
     try {
       final snapshot = await repository.loadSnapshot();
       _applySnapshot(snapshot);
+      await _initializeNotificationScheduler();
       _isInitialized = true;
       _loadError = null;
     } catch (error) {
@@ -560,6 +590,192 @@ class FinanceState extends ChangeNotifier {
       _isLoading = false;
       _notifyIfActive();
     }
+  }
+
+  Future<void> _initializeNotificationScheduler() async {
+    if (!_notificationScheduler.isSupported) {
+      _notificationPermissionStatus = NotificationPermissionStatus.unsupported;
+      return;
+    }
+    try {
+      final launchPayload = await _notificationScheduler.initialize(
+        onPayload: _handleNotificationPayload,
+      );
+      _notificationSchedulerInitialized = true;
+      if (launchPayload != null) _handleNotificationPayload(launchPayload);
+      await refreshNotificationPermission(reconcile: true);
+    } catch (error) {
+      _notificationError = error.toString();
+      _notificationPermissionStatus = NotificationPermissionStatus.unsupported;
+    }
+  }
+
+  Future<bool> enableTaskReminders() async {
+    if (!_notificationScheduler.isSupported) {
+      _notificationPermissionStatus = NotificationPermissionStatus.unsupported;
+      _notifyIfActive();
+      return false;
+    }
+    try {
+      if (!_notificationSchedulerInitialized) {
+        await _initializeNotificationScheduler();
+      }
+      final granted = await _notificationScheduler.requestPermission();
+      _notificationPermissionStatus = granted
+          ? NotificationPermissionStatus.granted
+          : NotificationPermissionStatus.denied;
+      _notificationPreferences =
+          _notificationPreferences.copyWith(enabled: granted);
+      _notificationError = null;
+      _persistAndNotify();
+      await _pendingNotificationWork;
+      return granted;
+    } catch (error) {
+      _notificationError = error.toString();
+      _notifyIfActive();
+      return false;
+    }
+  }
+
+  Future<void> setTaskRemindersEnabled(bool enabled) async {
+    if (enabled) {
+      await enableTaskReminders();
+      return;
+    }
+    _notificationPreferences =
+        _notificationPreferences.copyWith(enabled: false);
+    _persistAndNotify();
+    await _pendingNotificationWork;
+  }
+
+  void updateDefaultTaskReminder({
+    TaskReminderMode? mode,
+    int? hour,
+    int? minute,
+  }) {
+    _notificationPreferences = _notificationPreferences.copyWith(
+      defaultReminderMode: mode,
+      defaultHour: hour,
+      defaultMinute: minute,
+    );
+    _persistAndNotify();
+  }
+
+  void dismissNotificationDiscoveryCard() {
+    _notificationPreferences =
+        _notificationPreferences.copyWith(discoveryCardDismissed: true);
+    _persistAndNotify();
+  }
+
+  Future<void> refreshNotificationPermission({bool reconcile = true}) async {
+    if (!_notificationScheduler.isSupported) {
+      _notificationPermissionStatus = NotificationPermissionStatus.unsupported;
+      _notifyIfActive();
+      return;
+    }
+    try {
+      final granted = await _notificationScheduler.areNotificationsEnabled();
+      if (granted) {
+        _notificationPermissionStatus = NotificationPermissionStatus.granted;
+      } else if (_notificationPreferences.enabled) {
+        _notificationPermissionStatus = NotificationPermissionStatus.blocked;
+      } else if (_notificationPermissionStatus ==
+          NotificationPermissionStatus.granted) {
+        _notificationPermissionStatus = NotificationPermissionStatus.denied;
+      }
+      _notificationError = null;
+      _notifyIfActive();
+      if (reconcile) await _queueReminderReconciliation();
+    } catch (error) {
+      _notificationError = error.toString();
+      _notifyIfActive();
+    }
+  }
+
+  Future<void> showTestTaskNotification() async {
+    if (!notificationsAvailable) return;
+    try {
+      await _notificationScheduler.showTestNotification();
+      _notificationError = null;
+    } catch (error) {
+      _notificationError = error.toString();
+      _notifyIfActive();
+    }
+  }
+
+  Future<void> openNotificationSystemSettings() {
+    return _notificationScheduler.openSystemSettings();
+  }
+
+  void consumePendingTaskNavigation() {
+    if (_pendingTaskNavigationId == null) return;
+    _pendingTaskNavigationId = null;
+    _notifyIfActive();
+  }
+
+  TaskReminder? taskReminderFor(String taskId) {
+    final matches = _taskReminders.where((item) => item.taskId == taskId);
+    return matches.isEmpty ? null : matches.single;
+  }
+
+  DateTime? scheduledTaskReminderFor(FinancialTask task) {
+    return taskReminderFor(task.id)?.scheduledAtFor(task.dueDate);
+  }
+
+  void updateTaskReminder(
+    String taskId, {
+    required bool enabled,
+    TaskReminderMode? mode,
+    int? hour,
+    int? minute,
+    DateTime? customScheduledAt,
+  }) {
+    final now = DateTime.now();
+    final index = _taskReminders.indexWhere((item) => item.taskId == taskId);
+    if (index == -1) {
+      final usedIds = _taskReminders.map((item) => item.notificationId);
+      var nextId = 1000;
+      while (usedIds.contains(nextId)) {
+        nextId++;
+      }
+      final selectedMode = mode ?? _notificationPreferences.defaultReminderMode;
+      _taskReminders.add(
+        TaskReminder(
+          taskId: taskId,
+          notificationId: nextId,
+          enabled: enabled,
+          mode: selectedMode,
+          hour: hour ?? _notificationPreferences.defaultHour,
+          minute: minute ?? _notificationPreferences.defaultMinute,
+          customScheduledAt: selectedMode == TaskReminderMode.custom
+              ? customScheduledAt
+              : null,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+    } else {
+      _taskReminders[index] = _taskReminders[index].copyWith(
+        enabled: enabled,
+        mode: mode,
+        hour: hour,
+        minute: minute,
+        customScheduledAt: customScheduledAt,
+        updatedAt: now,
+        clearCustomScheduledAt: mode != null && mode != TaskReminderMode.custom,
+      );
+    }
+    _persistAndNotify();
+  }
+
+  Future<void> reconcileTaskReminders() => _queueReminderReconciliation();
+
+  void _handleNotificationPayload(String payload) {
+    if (!payload.startsWith('task:')) return;
+    final taskId = payload.substring('task:'.length);
+    if (taskId.isEmpty || taskId == _pendingTaskNavigationId) return;
+    _pendingTaskNavigationId = taskId;
+    _notifyIfActive();
   }
 
   Future<void> flushPendingSaves() async {
@@ -787,6 +1003,7 @@ class FinanceState extends ChangeNotifier {
 
     _selectedPeriod = period;
     _notifyIfActive();
+    _queueReminderReconciliation();
   }
 
   bool _isBudgetedExpense(TransactionEntry transaction) {
@@ -1088,7 +1305,7 @@ class FinanceState extends ChangeNotifier {
     _persistAndNotify();
   }
 
-  void addManualFinancialTask({
+  String? addManualFinancialTask({
     required String title,
     required double amount,
     String? notes,
@@ -1097,12 +1314,13 @@ class FinanceState extends ChangeNotifier {
     double? actualAmount,
   }) {
     if (title.trim().isEmpty || amount < 0) {
-      return;
+      return null;
     }
 
+    final id = 'manual-task-${DateTime.now().microsecondsSinceEpoch}';
     _manualTasks.add(
       FinancialTask(
-        id: 'manual-task-${DateTime.now().microsecondsSinceEpoch}',
+        id: id,
         title: title.trim(),
         amount: amount,
         type: FinancialTaskType.manual,
@@ -1118,6 +1336,7 @@ class FinanceState extends ChangeNotifier {
       ),
     );
     _persistAndNotify();
+    return id;
   }
 
   void updateFinancialTask(
@@ -1128,6 +1347,7 @@ class FinanceState extends ChangeNotifier {
     double? actualAmount,
     DateTime? dueDate,
     String? notes,
+    bool clearDueDate = false,
   }) {
     final manualIndex = _manualTasks.indexWhere((task) => task.id == id);
     final nextStatus = status;
@@ -1145,6 +1365,7 @@ class FinanceState extends ChangeNotifier {
         notes: _blankToNull(notes),
         completedAt: completedAt,
         clearActualAmount: nextStatus != FinancialTaskStatus.partial,
+        clearDueDate: clearDueDate,
         clearCompletedAt: nextStatus != FinancialTaskStatus.done,
       );
       _persistAndNotify();
@@ -1161,6 +1382,7 @@ class FinanceState extends ChangeNotifier {
       notes: _blankToNull(notes),
       completedAt: completedAt,
       clearActualAmount: nextStatus != FinancialTaskStatus.partial,
+      clearDueDate: clearDueDate,
       clearNotes: notes != null && _blankToNull(notes) == null,
       clearCompletedAt: nextStatus != FinancialTaskStatus.done,
     );
@@ -1180,6 +1402,16 @@ class FinanceState extends ChangeNotifier {
   }
 
   void deleteManualFinancialTask(String id) {
+    final reminder = taskReminderFor(id);
+    if (reminder != null && _notificationSchedulerInitialized) {
+      _pendingNotificationWork =
+          _pendingNotificationWork.catchError((_) {}).then(
+                (_) => _notificationScheduler.cancelTaskReminder(
+                  reminder.notificationId,
+                ),
+              );
+    }
+    _taskReminders.removeWhere((item) => item.taskId == id);
     _manualTasks.removeWhere((task) => task.id == id);
     _persistAndNotify();
   }
@@ -1691,6 +1923,7 @@ class FinanceState extends ChangeNotifier {
 
   void _persistAndNotify() {
     _notifyIfActive();
+    _queueReminderReconciliation();
     final repository = _repository;
     if (repository == null) {
       return;
@@ -1698,6 +1931,64 @@ class FinanceState extends ChangeNotifier {
 
     final snapshot = _snapshot();
     _enqueueSave(repository, snapshot);
+  }
+
+  Future<void> _queueReminderReconciliation() {
+    if (!_notificationSchedulerInitialized) return Future.value();
+    _pendingNotificationWork = _pendingNotificationWork
+        .catchError((_) {})
+        .then((_) => _reconcileTaskReminders())
+        .catchError((Object error) {
+      _notificationError = error.toString();
+      _notifyIfActive();
+    });
+    return _pendingNotificationWork;
+  }
+
+  Future<void> _reconcileTaskReminders() async {
+    final tasksById = {
+      for (final task in monthlyFinancialTasks) task.id: task,
+    };
+    final canScheduleGlobally = _notificationPreferences.enabled &&
+        _notificationPermissionStatus == NotificationPermissionStatus.granted;
+    final now = DateTime.now();
+    final knownIds = _taskReminders.map((item) => item.notificationId).toSet();
+    final pendingIds =
+        await _notificationScheduler.pendingTaskNotificationIds();
+    for (final pendingId in pendingIds) {
+      if (pendingId >= 1000 && !knownIds.contains(pendingId)) {
+        await _notificationScheduler.cancelTaskReminder(pendingId);
+      }
+    }
+
+    for (final reminder in _taskReminders) {
+      final task = tasksById[reminder.taskId];
+      final scheduledAt =
+          task == null ? null : reminder.scheduledAtFor(task.dueDate);
+      final taskCanBeScheduled = task != null &&
+          (task.status == FinancialTaskStatus.pending ||
+              task.status == FinancialTaskStatus.partial) &&
+          reminder.enabled &&
+          scheduledAt != null &&
+          scheduledAt.isAfter(now);
+
+      await _notificationScheduler.cancelTaskReminder(
+        reminder.notificationId,
+      );
+      if (!canScheduleGlobally || !taskCanBeScheduled) continue;
+
+      final dueDate = task.dueDate!;
+      final dueLabel = '${dueDate.day.toString().padLeft(2, '0')}/'
+          '${dueDate.month.toString().padLeft(2, '0')}';
+      await _notificationScheduler.scheduleTaskReminder(
+        notificationId: reminder.notificationId,
+        title: 'App Finance',
+        body: 'Tienes una tarea financiera pendiente para el $dueLabel.',
+        scheduledAt: scheduledAt,
+        payload: 'task:${task.id}',
+      );
+    }
+    _notificationError = null;
   }
 
   Future<void> _enqueueSave(
@@ -1737,6 +2028,8 @@ class FinanceState extends ChangeNotifier {
     _surplusPlan = snapshot.surplusPlan;
     _manualTasks = List.of(snapshot.manualTasks);
     _taskOverrides = Map.of(snapshot.taskOverrides);
+    _notificationPreferences = snapshot.notificationPreferences;
+    _taskReminders = List.of(snapshot.taskReminders);
     _tandas = List.of(snapshot.tandas);
     _tandaContributions = List.of(snapshot.tandaContributions);
     _tandaReceipts = List.of(snapshot.tandaReceipts);
@@ -1794,6 +2087,8 @@ class FinanceState extends ChangeNotifier {
       surplusPlan: _surplusPlan,
       manualTasks: List.of(_manualTasks),
       taskOverrides: Map.of(_taskOverrides),
+      notificationPreferences: _notificationPreferences,
+      taskReminders: List.of(_taskReminders),
       tandas: List.of(_tandas),
       tandaContributions: List.of(_tandaContributions),
       tandaReceipts: List.of(_tandaReceipts),
