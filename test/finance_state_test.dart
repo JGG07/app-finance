@@ -3,6 +3,7 @@ import 'package:app_finance/src/core/state/finance_state.dart';
 import 'package:app_finance/src/core/utils/currency_converter.dart';
 import 'package:app_finance/src/features/budgets/domain/monthly_extra.dart';
 import 'package:app_finance/src/features/budgets/domain/budget_category.dart';
+import 'package:app_finance/src/features/cards/domain/credit_card_monthly_payment.dart';
 import 'package:app_finance/src/features/dashboard/domain/surplus_plan.dart';
 import 'package:app_finance/src/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:app_finance/src/features/transactions/domain/transaction_entry.dart';
@@ -250,6 +251,164 @@ void main() {
 
     expect(state.cardMonthlyPaymentAmount(cardId), 3000);
     expect(state.totalMonthlyCardPayments, 3000);
+  });
+
+  test('estimated card payment includes active MSI monthly installments', () {
+    final state = FinanceState();
+    state.addCreditCard(
+      name: 'Tarjeta principal',
+      creditLimit: 30000,
+      usedBalance: 4000,
+      statementCutDay: 10,
+    );
+    final cardId = state.creditCards.single.id;
+
+    state.addCreditCardPurchase(
+      cardId: cardId,
+      title: 'Laptop',
+      amount: 6000,
+      installments: 6,
+      date: DateTime(2026, 6, 1),
+    );
+
+    expect(state.estimatedCardMonthlyPayment(cardId), 4000);
+    expect(state.monthlyInstallmentPaymentForCard(cardId), 1000);
+    expect(
+      state.cardMonthlyPaymentSource(cardId),
+      CreditCardPaymentSource.estimated,
+    );
+    expect(state.cardMonthlyPaymentAmount(cardId), 5000);
+  });
+
+  test('manual card payment with MSI does not add installments twice', () {
+    final state = FinanceState();
+    state.addCreditCard(
+      name: 'Tarjeta principal',
+      creditLimit: 30000,
+      usedBalance: 4000,
+      statementCutDay: 10,
+    );
+    final cardId = state.creditCards.single.id;
+
+    state.addCreditCardPurchase(
+      cardId: cardId,
+      title: 'Laptop',
+      amount: 6000,
+      installments: 6,
+      date: DateTime(2026, 6, 1),
+    );
+    state.updateCardMonthlyPayment(cardId, 10000);
+
+    expect(
+      state.cardMonthlyPaymentSource(cardId),
+      CreditCardPaymentSource.manual,
+    );
+    expect(state.cardMonthlyPaymentAmount(cardId), 10000);
+    expect(state.totalMonthlyCardPayments, 10000);
+  });
+
+  test('confirmed card payment with MSI does not add installments twice', () {
+    final state = FinanceState();
+    state.addCreditCard(
+      name: 'Tarjeta principal',
+      creditLimit: 30000,
+      usedBalance: 4000,
+      statementCutDay: 10,
+    );
+    final cardId = state.creditCards.single.id;
+
+    state.addCreditCardPurchase(
+      cardId: cardId,
+      title: 'Laptop',
+      amount: 6000,
+      installments: 6,
+      date: DateTime(2026, 6, 1),
+    );
+    state.updateCardMonthlyPayment(
+      cardId,
+      10000,
+      source: CreditCardPaymentSource.confirmed,
+    );
+
+    expect(
+      state.cardMonthlyPaymentSource(cardId),
+      CreditCardPaymentSource.confirmed,
+    );
+    expect(state.cardMonthlyPaymentAmount(cardId), 10000);
+    expect(state.totalMonthlyCardPayments, 10000);
+  });
+
+  test('returning card payment to estimated restores MSI in total', () {
+    final state = FinanceState();
+    state.addCreditCard(
+      name: 'Tarjeta principal',
+      creditLimit: 30000,
+      usedBalance: 4000,
+      statementCutDay: 10,
+    );
+    final cardId = state.creditCards.single.id;
+
+    state.addCreditCardPurchase(
+      cardId: cardId,
+      title: 'Laptop',
+      amount: 6000,
+      installments: 6,
+      date: DateTime(2026, 6, 1),
+    );
+    state.updateCardMonthlyPayment(cardId, 10000);
+
+    expect(state.cardMonthlyPaymentAmount(cardId), 10000);
+
+    state.updateCardMonthlyPayment(
+      cardId,
+      0,
+      source: CreditCardPaymentSource.estimated,
+    );
+
+    expect(
+      state.cardMonthlyPaymentSource(cardId),
+      CreditCardPaymentSource.estimated,
+    );
+    expect(state.cardMonthlyPaymentAmount(cardId), 5000);
+    expect(state.totalMonthlyCardPayments, 5000);
+  });
+
+  test('total monthly card payments uses corrected per-card amounts', () {
+    final state = FinanceState();
+    state.addCreditCard(
+      name: 'Manual',
+      creditLimit: 30000,
+      usedBalance: 4000,
+      statementCutDay: 10,
+    );
+    state.addCreditCard(
+      name: 'Estimada',
+      creditLimit: 25000,
+      usedBalance: 5600,
+      statementCutDay: 5,
+    );
+    final manualCardId = state.creditCards.first.id;
+    final estimatedCardId = state.creditCards.last.id;
+
+    state.addCreditCardPurchase(
+      cardId: manualCardId,
+      title: 'Laptop',
+      amount: 6000,
+      installments: 6,
+      date: DateTime(2026, 6, 1),
+    );
+    state.addCreditCardPurchase(
+      cardId: estimatedCardId,
+      title: 'Telefono',
+      amount: 2400,
+      installments: 4,
+      date: DateTime(2026, 6, 1),
+    );
+    state.updateCardMonthlyPayment(manualCardId, 10000);
+
+    expect(state.cardMonthlyPaymentAmount(manualCardId), 10000);
+    expect(state.cardMonthlyPaymentAmount(estimatedCardId), 6200);
+    expect(state.totalMonthlyCardPayments, 16200);
   });
 
   test('monthly extras are included in plan without affecting categories', () {

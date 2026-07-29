@@ -1242,8 +1242,16 @@ class FinanceState extends ChangeNotifier {
   }
 
   double cardMonthlyPaymentAmount(String cardId) {
-    return baseCardMonthlyPaymentAmount(cardId) +
-        monthlyInstallmentPaymentForCard(cardId);
+    final payment = cardMonthlyPaymentFor(cardId);
+    final estimatedAmount = estimatedCardMonthlyPayment(cardId);
+    final amount = payment.amount(estimatedAmount);
+    final source = payment.source(estimatedAmount);
+
+    if (source == CreditCardPaymentSource.estimated) {
+      return amount + monthlyInstallmentPaymentForCard(cardId);
+    }
+
+    return amount;
   }
 
   double baseCardMonthlyPaymentAmount(String cardId) {

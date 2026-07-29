@@ -188,6 +188,7 @@ class DashboardScreen extends StatelessWidget {
             final installments = state.monthlyInstallmentPaymentForCard(
               card.id,
             );
+            final estimatedTotal = estimated + installments;
 
             return AlertDialog(
               title: Text('Pago de ${card.name}'),
@@ -204,7 +205,7 @@ class DashboardScreen extends StatelessWidget {
                           selectedSource = selection.first;
                           if (selectedSource ==
                               CreditCardPaymentSource.estimated) {
-                            controller.text = estimated.toStringAsFixed(2);
+                            controller.text = estimatedTotal.toStringAsFixed(2);
                           }
                         });
                       },
@@ -232,7 +233,9 @@ class DashboardScreen extends StatelessWidget {
                         decimal: true,
                       ),
                       decoration: const InputDecoration(
-                        labelText: 'Monto a pagar este mes',
+                        labelText: 'Total del estado de cuenta',
+                        helperText:
+                            'Captura el total completo a pagar, incluyendo las mensualidades de compras a MSI.',
                         prefixText: r'$ ',
                         border: OutlineInputBorder(),
                       ),
@@ -246,17 +249,38 @@ class DashboardScreen extends StatelessWidget {
                       },
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      'Estimado actual: ${CurrencyFormatter.format(estimated)}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color:
-                                Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                    ),
-                    if (installments > 0) ...[
+                    if (selectedSource ==
+                        CreditCardPaymentSource.estimated) ...[
+                      Text(
+                        'Saldo corriente estimado: ${CurrencyFormatter.format(estimated)}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
+                      ),
                       const SizedBox(height: 4),
                       Text(
-                        'MSI adicionales: ${CurrencyFormatter.format(installments)} al mes',
+                        'Mensualidades MSI: ${CurrencyFormatter.format(installments)}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Total estimado: ${CurrencyFormatter.format(estimatedTotal)}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                    ] else ...[
+                      Text(
+                        'El total manual o confirmado ya debe incluir las mensualidades MSI.',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: Theme.of(context)
                                   .colorScheme
@@ -277,7 +301,7 @@ class DashboardScreen extends StatelessWidget {
                     if (formKey.currentState?.validate() ?? false) {
                       final amount =
                           selectedSource == CreditCardPaymentSource.estimated
-                              ? estimated
+                              ? estimatedTotal
                               : double.parse(controller.text.trim());
                       state.updateCardMonthlyPayment(
                         card.id,
