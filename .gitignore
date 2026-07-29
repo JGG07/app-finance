@@ -18,9 +18,19 @@ macos/Flutter/ephemeral/
 
 # Local Flutter and Android configuration
 android/local.properties
+android/key.properties
+key.properties
 
 # Local tooling
 .antigravitycli/
+.firebase/
+.gcloud-config/
+.tooling/
+google-cloud-sdk/
+google-cloud-cli-linux-x86_64.tar.gz
+firebase
+T.java
+T.class
 
 # Generated iOS configuration
 ios/Flutter/Generated.xcconfig
@@ -32,8 +42,13 @@ android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
 
 # Application builds
 *.apk
+*.jks
+*.keystore
 
 # Local files
 *.log
 .env
 .env.*
+*.secret
+*.secrets
+*.credentials

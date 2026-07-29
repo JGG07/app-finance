@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "app-finance-503821"
+  },
+  "targets": {
+    "app-finance-503821": {
+      "hosting": {
+        "app": [
+          "app-finance-503821"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}
