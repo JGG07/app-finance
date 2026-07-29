@@ -5,6 +5,7 @@ import '../../../core/state/finance_state_provider.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../shared/presentation/app_design.dart';
 import '../../subscriptions/domain/subscription_entry.dart';
+import 'card_monthly_payment_section.dart';
 import '../domain/credit_card.dart';
 import '../domain/credit_card_purchase.dart';
 
@@ -1226,6 +1227,7 @@ class CardsScreen extends StatelessWidget {
                 state,
                 card: card,
               ),
+              state: state,
               onPay: () => _showPaymentDialog(context, state, card),
               onSubscriptions: () => _showSubscriptionsSheet(context, state),
               onInstallments: () => _showInstallmentPurchasesSheet(
@@ -1369,6 +1371,7 @@ class _InstallmentCommitmentsCard extends StatelessWidget {
 
 class _CreditCardPanel extends StatelessWidget {
   const _CreditCardPanel({
+    required this.state,
     required this.card,
     required this.purchases,
     required this.subscriptions,
@@ -1378,6 +1381,7 @@ class _CreditCardPanel extends StatelessWidget {
     required this.onInstallments,
   });
 
+  final FinanceState state;
   final CreditCard card;
   final List<CreditCardPurchase> purchases;
   final List<SubscriptionEntry> subscriptions;
@@ -1390,9 +1394,7 @@ class _CreditCardPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final colorScheme = Theme.of(context).colorScheme;
-    final progress = card.creditLimit > 0
-        ? (card.usedBalance / card.creditLimit).clamp(0.0, 1.0)
-        : 0.0;
+    final progress = card.utilizationProgress;
     final subscriptionsTotal = subscriptions.fold<double>(
       0,
       (sum, subscription) => sum + subscription.amount,
@@ -1453,6 +1455,11 @@ class _CreditCardPanel extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             _InlineMoneyRow(
+              label: '% utilizado',
+              value: '${card.utilizationPercent.round()}%',
+            ),
+            const SizedBox(height: 6),
+            _InlineMoneyRow(
               label: 'Libre',
               value: CurrencyFormatter.format(card.availableCredit),
               valueColor: colorScheme.primary,
@@ -1461,11 +1468,21 @@ class _CreditCardPanel extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: LinearProgressIndicator(
+                key: ValueKey('card-utilization-progress-${card.id}'),
                 value: progress,
                 minHeight: 10,
                 backgroundColor: colorScheme.outlineVariant.withAlpha(128),
               ),
             ),
+            const SizedBox(height: 6),
+            Text(
+              'Credito ${card.utilizationPercent.round()}% usado',
+              style: textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 14),
+            CardMonthlyPaymentSection(state: state, card: card),
             const SizedBox(height: 14),
             Wrap(
               spacing: 8,

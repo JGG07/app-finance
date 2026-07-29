@@ -3,6 +3,7 @@ import 'package:app_finance/src/core/state/finance_state.dart';
 import 'package:app_finance/src/core/utils/currency_converter.dart';
 import 'package:app_finance/src/features/budgets/domain/monthly_extra.dart';
 import 'package:app_finance/src/features/budgets/domain/budget_category.dart';
+import 'package:app_finance/src/features/cards/domain/credit_card.dart';
 import 'package:app_finance/src/features/cards/domain/credit_card_monthly_payment.dart';
 import 'package:app_finance/src/features/dashboard/domain/surplus_plan.dart';
 import 'package:app_finance/src/features/dashboard/presentation/dashboard_screen.dart';
@@ -409,6 +410,79 @@ void main() {
     expect(state.cardMonthlyPaymentAmount(manualCardId), 10000);
     expect(state.cardMonthlyPaymentAmount(estimatedCardId), 6200);
     expect(state.totalMonthlyCardPayments, 16200);
+  });
+
+  test('changing payment does not modify card utilization percent', () {
+    final state = FinanceState();
+    state.addCreditCard(
+      name: 'Tarjeta principal',
+      creditLimit: 40000,
+      usedBalance: 20000,
+      statementCutDay: 10,
+    );
+    final cardId = state.creditCards.single.id;
+
+    expect(state.creditCards.single.utilizationPercent, 50);
+
+    state.updateCardMonthlyPayment(
+      cardId,
+      10000,
+      source: CreditCardPaymentSource.confirmed,
+    );
+
+    expect(state.cardMonthlyPaymentAmount(cardId), 10000);
+    expect(state.creditCards.single.utilizationPercent, 50);
+    expect(state.creditCards.single.utilizationProgress, 0.5);
+  });
+
+  test('changing used balance modifies utilization percent but not payment',
+      () {
+    final state = FinanceState();
+    state.addCreditCard(
+      name: 'Tarjeta principal',
+      creditLimit: 40000,
+      usedBalance: 20000,
+      statementCutDay: 10,
+    );
+    final cardId = state.creditCards.single.id;
+    state.updateCardMonthlyPayment(
+      cardId,
+      10000,
+      source: CreditCardPaymentSource.confirmed,
+    );
+
+    state.updateCreditCard(cardId, usedBalance: 30000);
+
+    expect(state.creditCards.single.utilizationPercent, 75);
+    expect(state.creditCards.single.utilizationProgress, 0.75);
+    expect(state.cardMonthlyPaymentAmount(cardId), 10000);
+  });
+
+  test('credit card utilization percent can exceed 100 but progress is clamped',
+      () {
+    const card = CreditCard(
+      id: 'card-1',
+      name: 'Tarjeta dorada',
+      creditLimit: 30000,
+      usedBalance: 31500,
+      statementCutDay: 10,
+    );
+
+    expect(card.utilizationPercent, 105);
+    expect(card.utilizationProgress, 1.0);
+  });
+
+  test('credit card utilization percent returns zero for invalid limit', () {
+    const card = CreditCard(
+      id: 'card-1',
+      name: 'Tarjeta dorada',
+      creditLimit: 0,
+      usedBalance: 1000,
+      statementCutDay: 10,
+    );
+
+    expect(card.utilizationPercent, 0);
+    expect(card.utilizationProgress, 0);
   });
 
   test('monthly extras are included in plan without affecting categories', () {

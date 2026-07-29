@@ -15,6 +15,21 @@ class CreditCard {
 
   double get availableCredit => creditLimit - usedBalance;
 
+  double get utilizationPercent {
+    if (!creditLimit.isFinite ||
+        !usedBalance.isFinite ||
+        creditLimit <= 0 ||
+        usedBalance <= 0) {
+      return 0;
+    }
+
+    return usedBalance / creditLimit * 100;
+  }
+
+  double get utilizationProgress {
+    return (utilizationPercent.clamp(0, 100) / 100).toDouble();
+  }
+
   CreditCard copyWith({
     String? name,
     double? creditLimit,

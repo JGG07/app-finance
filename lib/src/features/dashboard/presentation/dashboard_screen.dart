@@ -10,8 +10,7 @@ import '../../../core/utils/currency_converter.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../shared/presentation/app_design.dart';
 import '../../budgets/domain/monthly_extra.dart';
-import '../../cards/domain/credit_card.dart';
-import '../../cards/domain/credit_card_monthly_payment.dart';
+import '../../cards/presentation/card_monthly_payment_section.dart';
 import '../domain/surplus_plan.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -155,160 +154,6 @@ class DashboardScreen extends StatelessWidget {
                           behavior: SnackBarBehavior.floating,
                         ),
                       );
-                    }
-                  },
-                  child: const Text('Guardar'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _showEditCardPaymentDialog(
-    BuildContext context,
-    FinanceState state,
-    CreditCard card,
-  ) {
-    final currentAmount = state.baseCardMonthlyPaymentAmount(card.id);
-    final controller = TextEditingController(
-      text: currentAmount.toStringAsFixed(2),
-    );
-    final formKey = GlobalKey<FormState>();
-    var selectedSource = state.cardMonthlyPaymentSource(card.id);
-
-    showDialog<void>(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            final estimated = state.estimatedCardMonthlyPayment(card.id);
-            final installments = state.monthlyInstallmentPaymentForCard(
-              card.id,
-            );
-            final estimatedTotal = estimated + installments;
-
-            return AlertDialog(
-              title: Text('Pago de ${card.name}'),
-              content: Form(
-                key: formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SegmentedButton<CreditCardPaymentSource>(
-                      selected: {selectedSource},
-                      onSelectionChanged: (selection) {
-                        setDialogState(() {
-                          selectedSource = selection.first;
-                          if (selectedSource ==
-                              CreditCardPaymentSource.estimated) {
-                            controller.text = estimatedTotal.toStringAsFixed(2);
-                          }
-                        });
-                      },
-                      segments: const [
-                        ButtonSegment(
-                          value: CreditCardPaymentSource.manual,
-                          label: Text('Manual'),
-                        ),
-                        ButtonSegment(
-                          value: CreditCardPaymentSource.confirmed,
-                          label: Text('Confirmado'),
-                        ),
-                        ButtonSegment(
-                          value: CreditCardPaymentSource.estimated,
-                          label: Text('Estimado'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: controller,
-                      enabled:
-                          selectedSource != CreditCardPaymentSource.estimated,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: const InputDecoration(
-                        labelText: 'Total del estado de cuenta',
-                        helperText:
-                            'Captura el total completo a pagar, incluyendo las mensualidades de compras a MSI.',
-                        prefixText: r'$ ',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        final number = double.tryParse(value?.trim() ?? '');
-                        if (number == null || number < 0) {
-                          return 'Ingresa un monto valido';
-                        }
-
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 8),
-                    if (selectedSource ==
-                        CreditCardPaymentSource.estimated) ...[
-                      Text(
-                        'Saldo corriente estimado: ${CurrencyFormatter.format(estimated)}',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                            ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Mensualidades MSI: ${CurrencyFormatter.format(installments)}',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                            ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Total estimado: ${CurrencyFormatter.format(estimatedTotal)}',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                              fontWeight: FontWeight.w700,
-                            ),
-                      ),
-                    ] else ...[
-                      Text(
-                        'El total manual o confirmado ya debe incluir las mensualidades MSI.',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                            ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancelar'),
-                ),
-                FilledButton(
-                  onPressed: () {
-                    if (formKey.currentState?.validate() ?? false) {
-                      final amount =
-                          selectedSource == CreditCardPaymentSource.estimated
-                              ? estimatedTotal
-                              : double.parse(controller.text.trim());
-                      state.updateCardMonthlyPayment(
-                        card.id,
-                        amount,
-                        source: selectedSource,
-                      );
-                      Navigator.of(context).pop();
                     }
                   },
                   child: const Text('Guardar'),
@@ -472,7 +317,11 @@ class DashboardScreen extends StatelessWidget {
       case DebtApartadoItemKind.creditCard:
         final card = state.creditCardById(item.sourceId);
         if (card != null) {
-          _showEditCardPaymentDialog(context, state, card);
+          showCardMonthlyPaymentDialog(
+            context,
+            state: state,
+            card: card,
+          );
         }
         break;
       case DebtApartadoItemKind.monthlyExtra:
@@ -797,9 +646,8 @@ class DashboardOverview {
       ],
       debtAndApartadoItems: [
         ...state.creditCards.map((card) {
-          final progress = card.creditLimit > 0
-              ? (card.usedBalance / card.creditLimit).clamp(0.0, 1.0).toDouble()
-              : 0.0;
+          final utilizationPercent = card.utilizationPercent;
+          final progress = card.utilizationProgress;
 
           return DebtApartadoItem(
             sourceId: card.id,
@@ -807,9 +655,9 @@ class DashboardOverview {
             title: _cardSummaryTitle(card.name),
             type: 'Credito',
             amount: state.cardMonthlyPaymentAmount(card.id),
-            status: '${(progress * 100).round()}% usado',
+            status: '${utilizationPercent.round()}% usado',
             progress: progress,
-            color: progress >= 0.85
+            color: utilizationPercent >= 85
                 ? DashboardScreen._expenseColor
                 : DashboardScreen._debtColor,
             icon: card.name.toLowerCase().contains('dorada')
@@ -2018,6 +1866,9 @@ class _DebtApartadoTile extends StatelessWidget {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(999),
                         child: LinearProgressIndicator(
+                          key: ValueKey(
+                            'debt-apartado-progress-${item.sourceId}',
+                          ),
                           value: item.progress,
                           minHeight: 5,
                           backgroundColor: Colors.white.withAlpha(18),
