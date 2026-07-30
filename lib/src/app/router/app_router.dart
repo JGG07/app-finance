@@ -19,6 +19,7 @@ class AppRouter extends StatefulWidget {
 class _AppRouterState extends State<AppRouter> {
   int _selectedIndex = 0;
   String? _highlightedTaskId;
+  String? _pendingPaymentCardId;
 
   @override
   Widget build(BuildContext context) {
@@ -34,6 +35,17 @@ class _AppRouterState extends State<AppRouter> {
         state.consumePendingTaskNavigation();
       });
     }
+    final requestedCardId = state.pendingCardPaymentNavigationId;
+    if (requestedCardId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() {
+          _selectedIndex = 3;
+          _pendingPaymentCardId = requestedCardId;
+        });
+        state.consumePendingCardPaymentNavigation();
+      });
+    }
     final screens = <Widget>[
       DashboardScreen(
         onViewDebts: () => setState(() => _selectedIndex = 3),
@@ -42,7 +54,13 @@ class _AppRouterState extends State<AppRouter> {
       ),
       const TransactionsScreen(),
       const BudgetsScreen(),
-      const CardsScreen(),
+      CardsScreen(
+        pendingPaymentCardId: _pendingPaymentCardId,
+        onPendingPaymentHandled: () {
+          if (!mounted || _pendingPaymentCardId == null) return;
+          setState(() => _pendingPaymentCardId = null);
+        },
+      ),
       PlanScreen(highlightedTaskId: _highlightedTaskId),
     ];
 

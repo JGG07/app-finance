@@ -40,13 +40,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Pago para no generar intereses'), findsOneWidget);
-    expect(find.text(CurrencyFormatter.format(5000)), findsOneWidget);
+    expect(find.text('Pago estimado provisional'), findsOneWidget);
+    expect(find.text(CurrencyFormatter.format(1000)), findsAtLeastNWidgets(1));
 
-    await scrollToAndTap(
-      tester,
-      find.text('Editar'),
-    );
+    await tester.ensureVisible(find.text('Capturar').first);
+    await tester.tap(find.text('Capturar').first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Confirmado'));
     await tester.pumpAndSettle();
@@ -120,6 +118,37 @@ void main() {
     );
     expect(indicator.value, 1.0);
   });
+
+  testWidgets('dashboard does not show used balance as pending card payment',
+      (tester) async {
+    tester.view.physicalSize = const Size(900, 1800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final state = FinanceState();
+    state.addCreditCard(
+      name: 'Tarjeta dorada',
+      creditLimit: 56200,
+      usedBalance: 56093.41,
+      statementCutDay: 19,
+    );
+
+    await tester.pumpWidget(
+      _buildStateApp(
+        state: state,
+        child: DashboardScreen(
+          onViewDebts: () {},
+          onViewApartados: () {},
+          onViewPlan: () {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text(CurrencyFormatter.format(56093.41)), findsNothing);
+    expect(find.text(CurrencyFormatter.format(0)), findsAtLeastNWidgets(1));
+  });
 }
 
 Widget _buildStateApp({
@@ -127,7 +156,6 @@ Widget _buildStateApp({
   required Widget child,
 }) {
   return buildTestApp(
-    scaffold: false,
     child: FinanceStateProvider(
       notifier: state,
       child: child,

@@ -1,4 +1,5 @@
 import 'package:app_finance/src/core/state/finance_state.dart';
+import 'package:app_finance/src/features/cards/domain/credit_card_monthly_payment.dart';
 import 'package:app_finance/src/features/notifications/domain/task_reminder.dart';
 import 'package:app_finance/src/features/notifications/services/task_notification_scheduler.dart';
 import 'package:app_finance/src/features/tasks/domain/financial_task.dart';
@@ -126,6 +127,78 @@ void main() {
     expect(state.pendingTaskNavigationId, 'task-42');
     state.consumePendingTaskNavigation();
     expect(state.pendingTaskNavigationId, isNull);
+  });
+
+  test('pending card payment reminder can be created and identifies the card',
+      () async {
+    await state.enableTaskReminders();
+    state.addCreditCard(
+      name: 'Tarjeta dorada',
+      creditLimit: 56200,
+      usedBalance: 56093.41,
+      statementCutDay: 19,
+    );
+    final cardId = state.creditCards.single.id;
+    final taskId = state.cardPaymentTaskId(cardId);
+
+    expect(
+      await state.configureCardPaymentReminder(cardId, enabled: true),
+      isTrue,
+    );
+    await state.reconcileTaskReminders();
+
+    final reminder = state.taskReminderFor(taskId);
+    expect(reminder, isNotNull);
+    expect(scheduler.scheduled, hasLength(1));
+    final scheduled = scheduler.scheduled[reminder!.notificationId]!;
+    expect(scheduled.payload, 'task:$taskId');
+    expect(scheduled.title, 'Agrega el pago de Tarjeta dorada');
+    expect(scheduled.body, contains('Tarjeta dorada'));
+  });
+
+  test('capturing or confirming card payment cancels its pending reminder',
+      () async {
+    await state.enableTaskReminders();
+    state.addCreditCard(
+      name: 'Tarjeta dorada',
+      creditLimit: 56200,
+      usedBalance: 56093.41,
+      statementCutDay: 19,
+    );
+    final cardId = state.creditCards.single.id;
+    final taskId = state.cardPaymentTaskId(cardId);
+    await state.configureCardPaymentReminder(cardId, enabled: true);
+    await state.reconcileTaskReminders();
+
+    final notificationId = state.taskReminderFor(taskId)!.notificationId;
+    state.updateCardMonthlyPayment(
+      cardId,
+      10000,
+      source: CreditCardPaymentSource.confirmed,
+    );
+    await state.reconcileTaskReminders();
+
+    expect(state.taskReminderFor(taskId), isNull);
+    expect(scheduler.cancelled, contains(notificationId));
+    expect(scheduler.scheduled, isEmpty);
+  });
+
+  test('card payment notification payload requests card payment navigation',
+      () async {
+    state.addCreditCard(
+      name: 'Tarjeta dorada',
+      creditLimit: 56200,
+      usedBalance: 56093.41,
+      statementCutDay: 19,
+    );
+    final cardId = state.creditCards.single.id;
+
+    scheduler.tap(state.cardPaymentTaskId(cardId));
+    expect(state.pendingCardPaymentNavigationId, cardId);
+    scheduler.tap(state.cardPaymentTaskId(cardId));
+    expect(state.pendingCardPaymentNavigationId, cardId);
+    state.consumePendingCardPaymentNavigation();
+    expect(state.pendingCardPaymentNavigationId, isNull);
   });
 }
 
