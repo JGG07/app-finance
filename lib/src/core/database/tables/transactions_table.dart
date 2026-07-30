@@ -7,6 +7,8 @@ class Transactions extends Table {
   TextColumn get category => text()();
   DateTimeColumn get date => dateTime()();
   TextColumn get type => text()();
+  TextColumn get creditCardId => text().nullable()();
+  TextColumn get cardTransactionKind => text().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};

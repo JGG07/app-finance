@@ -15,6 +15,12 @@ enum _TransactionFilter {
   apartados,
 }
 
+enum _TransactionEntryFormKind {
+  expense,
+  income,
+  cardPayment,
+}
+
 class TransactionsScreen extends StatefulWidget {
   const TransactionsScreen({super.key});
 
@@ -34,17 +40,30 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   var _filter = _TransactionFilter.all;
 
-  Future<void> _showAddTransactionDialog(
+  Future<void> _showTransactionDialog(
     BuildContext context,
-    FinanceState state,
-  ) async {
-    final titleController = TextEditingController();
+    FinanceState state, {
+    TransactionEntry? transaction,
+    String? preferredCardId,
+    _TransactionEntryFormKind? initialKind,
+  }) async {
+    final titleController =
+        TextEditingController(text: transaction?.title ?? '');
     final amountController = TextEditingController();
     final formKey = GlobalKey<FormState>();
+    final initialAmount = transaction?.amount;
+    if (initialAmount != null) {
+      amountController.text = initialAmount.toStringAsFixed(2);
+    }
 
-    TransactionType selectedType = TransactionType.expense;
-    String? selectedCategory;
-    DateTime selectedDate = DateTime.now();
+    var selectedKind = initialKind ?? _formKindForTransaction(transaction);
+    String? selectedCategory =
+        transaction == null || transaction.type == TransactionType.cardPayment
+            ? null
+            : transaction.category;
+    String? selectedCardId = transaction?.creditCardId ?? preferredCardId;
+    var useCreditCardForExpense = transaction?.isCreditCardPurchase ?? false;
+    DateTime selectedDate = transaction?.date ?? DateTime.now();
 
     await showDialog<void>(
       context: context,
@@ -53,38 +72,76 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           builder: (context, setState) {
             final categoryOptions =
                 state.categories.map((category) => category.title).toList();
+            final hasCards = state.creditCards.isNotEmpty;
 
             if (selectedCategory != null &&
                 !categoryOptions.contains(selectedCategory)) {
               selectedCategory = null;
             }
+            if (selectedCardId != null &&
+                state.creditCardById(selectedCardId!) == null) {
+              selectedCardId = null;
+            }
+            if (selectedKind == _TransactionEntryFormKind.cardPayment &&
+                !hasCards) {
+              selectedCardId = null;
+            }
+            if (selectedKind != _TransactionEntryFormKind.expense) {
+              useCreditCardForExpense = false;
+            }
+
+            final selectedCard = selectedCardId == null
+                ? null
+                : state.creditCardById(selectedCardId!);
+            final cardErrorText = !hasCards
+                ? 'No hay tarjetas registradas.'
+                : selectedCard == null
+                    ? 'Selecciona una tarjeta.'
+                    : null;
 
             return AlertDialog(
-              title: const Text('Registrar movimiento'),
+              title: Text(
+                transaction == null
+                    ? 'Registrar movimiento'
+                    : 'Editar movimiento',
+              ),
               content: SingleChildScrollView(
                 child: Form(
                   key: formKey,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      SegmentedButton<TransactionType>(
-                        selected: {selectedType},
+                      SegmentedButton<_TransactionEntryFormKind>(
+                        selected: {selectedKind},
                         onSelectionChanged: (newSelection) {
                           setState(() {
-                            selectedType = newSelection.first;
-                            selectedCategory = null;
+                            selectedKind = newSelection.first;
+                            if (selectedKind ==
+                                _TransactionEntryFormKind.cardPayment) {
+                              selectedCategory = null;
+                              useCreditCardForExpense = false;
+                            }
+                            if (selectedKind ==
+                                _TransactionEntryFormKind.income) {
+                              selectedCardId = null;
+                            }
                           });
                         },
                         segments: const [
-                          ButtonSegment<TransactionType>(
-                            value: TransactionType.expense,
+                          ButtonSegment<_TransactionEntryFormKind>(
+                            value: _TransactionEntryFormKind.expense,
                             label: Text('Gasto'),
                             icon: Icon(Icons.remove, size: 16),
                           ),
-                          ButtonSegment<TransactionType>(
-                            value: TransactionType.income,
+                          ButtonSegment<_TransactionEntryFormKind>(
+                            value: _TransactionEntryFormKind.income,
                             label: Text('Ingreso'),
                             icon: Icon(Icons.add, size: 16),
+                          ),
+                          ButtonSegment<_TransactionEntryFormKind>(
+                            value: _TransactionEntryFormKind.cardPayment,
+                            label: Text('Pago a tarjeta'),
+                            icon: Icon(Icons.credit_card_outlined, size: 16),
                           ),
                         ],
                       ),
@@ -128,7 +185,34 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                         },
                       ),
                       const SizedBox(height: AppSpacing.lg),
-                      if (categoryOptions.isEmpty)
+                      if (selectedKind == _TransactionEntryFormKind.cardPayment)
+                        Column(
+                          children: [
+                            if (!hasCards)
+                              const _InlineInfoMessage(
+                                text:
+                                    'No hay tarjetas registradas. Agrega una tarjeta antes de capturar un pago.',
+                              )
+                            else
+                              DropdownButtonFormField<String>(
+                                initialValue: selectedCardId,
+                                decoration: const InputDecoration(
+                                  labelText: 'Tarjeta a pagar',
+                                ),
+                                items: state.creditCards.map((card) {
+                                  return DropdownMenuItem(
+                                    value: card.id,
+                                    child: Text(card.name),
+                                  );
+                                }).toList(),
+                                validator: (_) => cardErrorText,
+                                onChanged: (value) {
+                                  setState(() => selectedCardId = value);
+                                },
+                              ),
+                          ],
+                        )
+                      else if (categoryOptions.isEmpty)
                         _EmptyCategoryField(
                           onCreate: () async {
                             final category = await _showCategoryEditorDialog(
@@ -161,6 +245,61 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                           },
                         ),
                         const SizedBox(height: AppSpacing.sm),
+                        if (selectedKind == _TransactionEntryFormKind.expense)
+                          Column(
+                            children: [
+                              SwitchListTile(
+                                contentPadding: EdgeInsets.zero,
+                                value: useCreditCardForExpense,
+                                title:
+                                    const Text('Compra con tarjeta de credito'),
+                                subtitle: const Text(
+                                  'Si la activas, el saldo utilizado de la tarjeta se actualiza automaticamente.',
+                                ),
+                                onChanged: hasCards
+                                    ? (value) {
+                                        setState(() {
+                                          useCreditCardForExpense = value;
+                                          if (!value) {
+                                            selectedCardId = null;
+                                          } else {
+                                            selectedCardId ??=
+                                                state.creditCards.first.id;
+                                          }
+                                        });
+                                      }
+                                    : null,
+                              ),
+                              if (!hasCards)
+                                const _InlineInfoMessage(
+                                  text:
+                                      'No hay tarjetas registradas. Este gasto se guardara sin tarjeta hasta que agregues una.',
+                                ),
+                              if (useCreditCardForExpense && hasCards) ...[
+                                const SizedBox(height: AppSpacing.sm),
+                                DropdownButtonFormField<String>(
+                                  initialValue: selectedCardId,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Tarjeta asociada',
+                                  ),
+                                  items: state.creditCards.map((card) {
+                                    return DropdownMenuItem(
+                                      value: card.id,
+                                      child: Text(card.name),
+                                    );
+                                  }).toList(),
+                                  validator: (_) => selectedCardId == null
+                                      ? 'Selecciona una tarjeta.'
+                                      : null,
+                                  onChanged: (value) {
+                                    setState(() => selectedCardId = value);
+                                  },
+                                ),
+                              ],
+                            ],
+                          ),
+                        if (selectedKind != _TransactionEntryFormKind.expense)
+                          const SizedBox(height: AppSpacing.xs),
                         Row(
                           children: [
                             TextButton.icon(
@@ -225,21 +364,80 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                   child: const Text('Cancelar'),
                 ),
                 FilledButton(
-                  onPressed: categoryOptions.isEmpty
+                  onPressed: categoryOptions.isEmpty &&
+                          selectedKind != _TransactionEntryFormKind.cardPayment
                       ? null
                       : () {
-                          if (formKey.currentState?.validate() ?? false) {
-                            state.addTransaction(
-                              title: titleController.text.trim(),
-                              amount: double.parse(amountController.text),
-                              categoryTitle: selectedCategory!,
-                              type: selectedType,
-                              date: selectedDate,
-                            );
-                            Navigator.of(context).pop();
+                          if (!(formKey.currentState?.validate() ?? false)) {
+                            return;
                           }
+
+                          final amount = double.parse(amountController.text);
+                          final title = titleController.text.trim();
+                          final categoryTitle = selectedKind ==
+                                  _TransactionEntryFormKind.cardPayment
+                              ? FinanceState.cardPaymentCategoryTitle
+                              : selectedCategory!;
+                          final type = switch (selectedKind) {
+                            _TransactionEntryFormKind.expense =>
+                              TransactionType.expense,
+                            _TransactionEntryFormKind.income =>
+                              TransactionType.income,
+                            _TransactionEntryFormKind.cardPayment =>
+                              TransactionType.cardPayment,
+                          };
+                          final cardTransactionKind = switch (selectedKind) {
+                            _TransactionEntryFormKind.expense =>
+                              useCreditCardForExpense
+                                  ? CardTransactionKind.purchase
+                                  : null,
+                            _TransactionEntryFormKind.income => null,
+                            _TransactionEntryFormKind.cardPayment =>
+                              CardTransactionKind.payment,
+                          };
+                          final creditCardId = selectedKind ==
+                                  _TransactionEntryFormKind.cardPayment
+                              ? selectedCardId
+                              : useCreditCardForExpense
+                                  ? selectedCardId
+                                  : null;
+
+                          final ok = transaction == null
+                              ? state.addTransaction(
+                                    title: title,
+                                    amount: amount,
+                                    categoryTitle: categoryTitle,
+                                    type: type,
+                                    date: selectedDate,
+                                    creditCardId: creditCardId,
+                                    cardTransactionKind: cardTransactionKind,
+                                  ) !=
+                                  null
+                              : state.updateTransaction(
+                                  transaction.id,
+                                  title: title,
+                                  amount: amount,
+                                  categoryTitle: categoryTitle,
+                                  type: type,
+                                  date: selectedDate,
+                                  creditCardId: creditCardId,
+                                  cardTransactionKind: cardTransactionKind,
+                                );
+
+                          if (!ok) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'No se pudo guardar el movimiento. Verifica la tarjeta, el monto y la relacion seleccionada.',
+                                ),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                            return;
+                          }
+                          Navigator.of(context).pop();
                         },
-                  child: const Text('Registrar'),
+                  child: Text(transaction == null ? 'Registrar' : 'Guardar'),
                 ),
               ],
             );
@@ -252,6 +450,19 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       titleController.dispose();
       amountController.dispose();
     });
+  }
+
+  _TransactionEntryFormKind _formKindForTransaction(
+    TransactionEntry? transaction,
+  ) {
+    if (transaction == null) {
+      return _TransactionEntryFormKind.expense;
+    }
+    return switch (transaction.type) {
+      TransactionType.income => _TransactionEntryFormKind.income,
+      TransactionType.expense => _TransactionEntryFormKind.expense,
+      TransactionType.cardPayment => _TransactionEntryFormKind.cardPayment,
+    };
   }
 
   Future<BudgetCategory?> _showCategoryEditorDialog(
@@ -540,7 +751,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           subtitle: 'Historial claro de gastos, ingresos y apartados.',
           action: IconButton.filled(
             tooltip: 'Nuevo movimiento',
-            onPressed: () => _showAddTransactionDialog(context, state),
+            onPressed: () => _showTransactionDialog(context, state),
             icon: const Icon(Icons.add),
           ),
         ),
@@ -562,6 +773,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             child: _TransactionTile(
               transaction: transaction,
               category: _categoryFor(state, transaction),
+              onEdit: () => _showTransactionDialog(
+                context,
+                state,
+                transaction: transaction,
+              ),
               onDelete: () => _confirmDelete(context, state, transaction),
             ),
           ),
@@ -580,14 +796,17 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
       return switch (_filter) {
         _TransactionFilter.all => true,
-        _TransactionFilter.expenses =>
-          transaction.type == TransactionType.expense,
+        _TransactionFilter.expenses => _isExpenseTransaction(transaction),
         _TransactionFilter.income => transaction.type == TransactionType.income,
-        _TransactionFilter.cards => category.contains('tarjeta'),
+        _TransactionFilter.cards => transaction.isCreditCardTransaction,
         _TransactionFilter.apartados =>
           category.contains('apartado') || category.contains('extra'),
       };
     }).toList(growable: false);
+  }
+
+  bool _isExpenseTransaction(TransactionEntry transaction) {
+    return transaction.type == TransactionType.expense;
   }
 
   BudgetCategory? _categoryFor(
@@ -613,9 +832,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       builder: (context) {
         return AlertDialog(
           title: const Text('Eliminar movimiento'),
-          content: Text(
-            'Seguro que deseas eliminar "${transaction.title}"?',
-          ),
+          content: Text(_deleteWarningText(transaction)),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
@@ -632,6 +849,18 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         );
       },
     );
+  }
+
+  String _deleteWarningText(TransactionEntry transaction) {
+    if (transaction.isCreditCardPurchase) {
+      return 'Seguro que deseas eliminar "${transaction.title}"? '
+          'Tambien se descontara este importe del saldo utilizado de la tarjeta.';
+    }
+    if (transaction.isCreditCardPayment) {
+      return 'Seguro que deseas eliminar "${transaction.title}"? '
+          'Tambien se restaurara este importe en el saldo utilizado de la tarjeta.';
+    }
+    return 'Seguro que deseas eliminar "${transaction.title}"?';
   }
 }
 
@@ -665,6 +894,30 @@ class _EmptyCategoryField extends StatelessWidget {
             label: const Text('Crear categoria'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _InlineInfoMessage extends StatelessWidget {
+  const _InlineInfoMessage({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        text,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
       ),
     );
   }
@@ -762,40 +1015,66 @@ class _FilterPills extends StatelessWidget {
 class _TransactionTile extends StatelessWidget {
   const _TransactionTile({
     required this.transaction,
+    required this.onEdit,
     required this.onDelete,
     this.category,
   });
 
   final TransactionEntry transaction;
   final BudgetCategory? category;
+  final VoidCallback onEdit;
   final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
-    final isExpense = transaction.type == TransactionType.expense;
-    final color =
-        isExpense ? category?.color ?? AppColors.debt : AppColors.primary;
+    final isIncome = transaction.type == TransactionType.income;
+    final isCardPayment = transaction.type == TransactionType.cardPayment;
+    final color = isIncome
+        ? AppColors.primary
+        : isCardPayment
+            ? AppColors.primary
+            : category?.color ?? AppColors.debt;
+    final statusLabel = switch (transaction.type) {
+      TransactionType.expense =>
+        transaction.isCreditCardPurchase ? 'Compra con tarjeta' : 'Gasto',
+      TransactionType.income => 'Ingreso',
+      TransactionType.cardPayment => 'Pago tarjeta',
+    };
+    final icon = switch (transaction.type) {
+      TransactionType.expense => Icons.arrow_outward_outlined,
+      TransactionType.income => Icons.call_received_outlined,
+      TransactionType.cardPayment => Icons.payments_outlined,
+    };
+    final amountPrefix = isIncome ? '+' : '-';
 
     return FinancialListItem(
-      icon: isExpense
-          ? Icons.arrow_outward_outlined
-          : Icons.call_received_outlined,
+      icon: icon,
       iconColor: color,
       title: transaction.title,
       subtitle:
           '${transaction.category} - ${transaction.date.day}/${transaction.date.month}/${transaction.date.year} - MXN',
-      amount:
-          '${isExpense ? '-' : '+'}${CurrencyFormatter.format(transaction.amount)}',
-      amountColor: isExpense ? AppColors.debt : AppColors.primary,
+      amount: '$amountPrefix${CurrencyFormatter.format(transaction.amount)}',
+      amountColor: isIncome ? AppColors.primary : AppColors.debt,
       status: StatusPill(
-        label: isExpense ? 'Gasto' : 'Ingreso',
+        label: statusLabel,
         color: color,
       ),
-      trailing: IconButton(
-        tooltip: 'Eliminar',
-        onPressed: onDelete,
-        icon: const Icon(Icons.delete_outline, size: 18),
-        color: AppColors.textSecondary,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            tooltip: 'Editar',
+            onPressed: onEdit,
+            icon: const Icon(Icons.edit_outlined, size: 18),
+            color: AppColors.textSecondary,
+          ),
+          IconButton(
+            tooltip: 'Eliminar',
+            onPressed: onDelete,
+            icon: const Icon(Icons.delete_outline, size: 18),
+            color: AppColors.textSecondary,
+          ),
+        ],
       ),
     );
   }

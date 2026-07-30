@@ -88,14 +88,13 @@ void main() {
       tandaId: tandaId,
       receivedAt: DateTime(2026, 8, 15),
     );
-    state.addTransaction(
+    final manualId = state.addTransaction(
       title: 'Recepcion de Familia',
       amount: 4000,
       categoryTitle: tandaReceiptTransactionCategory,
       type: TransactionType.income,
       date: DateTime(2026, 8, 15),
     );
-    final manualId = state.transactions.first.id;
 
     state.undoTandaReceipt(tandaId);
 
@@ -181,14 +180,13 @@ void main() {
       tandaId: id,
       receivedAt: DateTime(2026, 8, 15),
     );
-    state.addTransaction(
+    final manualId = state.addTransaction(
       title: 'Recepcion de Familia',
       amount: 4000,
       categoryTitle: tandaReceiptTransactionCategory,
       type: TransactionType.income,
       date: DateTime(2026, 8, 15),
     );
-    final manualId = state.transactions.first.id;
     state.deleteTanda(id, deleteLinkedTransactions: true);
     expect(state.transactions.single.id, manualId);
     expect(state.tandaReceipts, isEmpty);

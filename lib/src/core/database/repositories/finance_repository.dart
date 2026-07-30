@@ -434,6 +434,8 @@ class FinanceRepository implements FinanceStorage {
       category: transaction.category,
       date: transaction.date,
       type: transaction.type.name,
+      creditCardId: Value(transaction.creditCardId),
+      cardTransactionKind: Value(transaction.cardTransactionKind?.name),
     );
   }
 
@@ -445,6 +447,13 @@ class FinanceRepository implements FinanceStorage {
       category: row.category,
       date: row.date,
       type: _enumValue(domain.TransactionType.values, row.type),
+      creditCardId: row.creditCardId,
+      cardTransactionKind: row.cardTransactionKind == null
+          ? null
+          : _enumValue(
+              domain.CardTransactionKind.values,
+              row.cardTransactionKind!,
+            ),
     );
   }
 

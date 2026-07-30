@@ -25,7 +25,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('migrates v3 to v5 with one pending receipt and no income', () async {
+  test('migrates v3 to v6 with one pending receipt and no income', () async {
     final directory = await Directory.systemTemp.createTemp('tanda_v3_');
     final file = File('${directory.path}/migration.sqlite');
     AppDatabase? database;
@@ -88,7 +88,7 @@ void main() {
       final receipts = await database.select(database.tandaReceipts).get();
       final contributions =
           await database.select(database.tandaContributions).get();
-      expect(database.schemaVersion, 5);
+      expect(database.schemaVersion, 6);
       expect(receipts, hasLength(1));
       expect(receipts.single.id, receiptIdForTanda('legacy'));
       expect(receipts.single.amount, 3000);
@@ -275,7 +275,7 @@ void main() {
     }
   });
 
-  test('migrates version 1 to version 5 without deleting legacy data',
+  test('migrates version 1 to version 6 without deleting legacy data',
       () async {
     final tempDirectory = await Directory.systemTemp.createTemp(
       'app_finance_migration_test_',
@@ -308,11 +308,220 @@ void main() {
           .getSingle();
       final tandaRows = await database.select(database.tandas).get();
 
-      expect(database.schemaVersion, 5);
+      expect(database.schemaVersion, 6);
       expect(legacy.read<String>('value'), 'preserved');
       expect(tandaRows, isEmpty);
     } finally {
       await database?.close();
+      await tempDirectory.delete(recursive: true);
+    }
+  });
+
+  test('migrates version 5 to 6 leaving card transaction columns in null',
+      () async {
+    final tempDirectory = await Directory.systemTemp.createTemp(
+      'app_finance_migration_v5_test_',
+    );
+    final databaseFile = File('${tempDirectory.path}/migration.sqlite');
+    AppDatabase? database;
+
+    try {
+      database = AppDatabase.forTesting(
+        NativeDatabase(
+          databaseFile,
+          setup: (sqlite) {
+            if (sqlite.userVersion != 0) return;
+            sqlite.execute('''
+              CREATE TABLE transactions (
+                id TEXT NOT NULL PRIMARY KEY,
+                title TEXT NOT NULL,
+                amount REAL NOT NULL,
+                category TEXT NOT NULL,
+                date INTEGER NOT NULL,
+                type TEXT NOT NULL
+              )
+            ''');
+            sqlite.execute('''
+              INSERT INTO transactions VALUES (
+                'legacy-tx', 'Super', 250, 'Comida', 1783641600, 'expense'
+              )
+            ''');
+            sqlite.userVersion = 5;
+          },
+        ),
+      );
+
+      final rows = await database.select(database.transactions).get();
+      expect(database.schemaVersion, 6);
+      expect(rows, hasLength(1));
+      expect(rows.single.creditCardId, isNull);
+      expect(rows.single.cardTransactionKind, isNull);
+    } finally {
+      await database?.close();
+      await tempDirectory.delete(recursive: true);
+    }
+  });
+
+  test('stores and reloads linked purchase and payment transactions', () async {
+    final tempDirectory = await Directory.systemTemp.createTemp(
+      'app_finance_card_tx_repository_test_',
+    );
+    final databaseFile = File('${tempDirectory.path}/app_finance.sqlite');
+    FinanceRepository? repository;
+
+    try {
+      repository = FinanceRepository(
+        AppDatabase.forTesting(NativeDatabase(databaseFile)),
+      );
+      final snapshot = FinanceSnapshot(
+        monthlyIncome: 0,
+        categories: const [
+          BudgetCategory(
+            id: 'cat-food',
+            title: 'Comida',
+            limit: 1000,
+            spent: 200,
+            color: Color(0xFF00AA00),
+          ),
+        ],
+        transactions: [
+          TransactionEntry(
+            id: 'purchase-tx',
+            title: 'Super',
+            amount: 200,
+            category: 'Comida',
+            date: DateTime(2026, 7, 10),
+            type: TransactionType.expense,
+            creditCardId: 'card-primary',
+            cardTransactionKind: CardTransactionKind.purchase,
+          ),
+          TransactionEntry(
+            id: 'payment-tx',
+            title: 'Pago a Tarjeta principal',
+            amount: 150,
+            category: FinanceState.cardPaymentCategoryTitle,
+            date: DateTime(2026, 7, 11),
+            type: TransactionType.cardPayment,
+            creditCardId: 'card-primary',
+            cardTransactionKind: CardTransactionKind.payment,
+          ),
+        ],
+        plannedExpenses: const [],
+        creditCards: const [
+          CreditCard(
+            id: 'card-primary',
+            name: 'Tarjeta principal',
+            creditLimit: 10000,
+            usedBalance: 4050,
+            statementCutDay: 10,
+          ),
+        ],
+        creditCardPurchases: const [],
+        subscriptions: const [],
+        cardMonthlyPayments: const [],
+        monthlyExtras: const [],
+        surplusPlan: const SurplusPlan(type: SurplusPlanType.unconfigured),
+        manualTasks: const [],
+        taskOverrides: const {},
+        tandas: const [],
+        tandaContributions: const [],
+        tandaReceipts: const [],
+      );
+
+      await repository.saveSnapshot(snapshot);
+      await repository.close();
+
+      repository = FinanceRepository(
+        AppDatabase.forTesting(NativeDatabase(databaseFile)),
+      );
+      final actual = await repository.loadSnapshot();
+      expect(actual.transactions, hasLength(2));
+      expect(actual.transactions.first.creditCardId, 'card-primary');
+      expect(
+        actual.transactions.first.cardTransactionKind,
+        CardTransactionKind.payment,
+      );
+      expect(actual.transactions.last.creditCardId, 'card-primary');
+      expect(
+        actual.transactions.last.cardTransactionKind,
+        CardTransactionKind.purchase,
+      );
+    } finally {
+      await repository?.close();
+      await tempDirectory.delete(recursive: true);
+    }
+  });
+
+  test('reopening state does not reapply linked transactions to used balance',
+      () async {
+    final tempDirectory = await Directory.systemTemp.createTemp(
+      'app_finance_card_tx_reopen_test_',
+    );
+    final databaseFile = File('${tempDirectory.path}/app_finance.sqlite');
+    FinanceRepository? repository;
+
+    try {
+      repository = FinanceRepository(
+        AppDatabase.forTesting(NativeDatabase(databaseFile)),
+      );
+      final snapshot = FinanceSnapshot(
+        monthlyIncome: 0,
+        categories: const [
+          BudgetCategory(
+            id: 'cat-food',
+            title: 'Comida',
+            limit: 1000,
+            spent: 200,
+            color: Color(0xFF00AA00),
+          ),
+        ],
+        transactions: [
+          TransactionEntry(
+            id: 'purchase-tx',
+            title: 'Super',
+            amount: 200,
+            category: 'Comida',
+            date: DateTime(2026, 7, 10),
+            type: TransactionType.expense,
+            creditCardId: 'card-primary',
+            cardTransactionKind: CardTransactionKind.purchase,
+          ),
+        ],
+        plannedExpenses: const [],
+        creditCards: const [
+          CreditCard(
+            id: 'card-primary',
+            name: 'Tarjeta principal',
+            creditLimit: 10000,
+            usedBalance: 5000,
+            statementCutDay: 10,
+          ),
+        ],
+        creditCardPurchases: const [],
+        subscriptions: const [],
+        cardMonthlyPayments: const [],
+        monthlyExtras: const [],
+        surplusPlan: const SurplusPlan(type: SurplusPlanType.unconfigured),
+        manualTasks: const [],
+        taskOverrides: const {},
+        tandas: const [],
+        tandaContributions: const [],
+        tandaReceipts: const [],
+      );
+
+      await repository.saveSnapshot(snapshot);
+      await repository.close();
+
+      repository = FinanceRepository(
+        AppDatabase.forTesting(NativeDatabase(databaseFile)),
+      );
+      final reopened = FinanceState(repository: repository);
+      await reopened.initialize();
+      expect(reopened.creditCards.single.usedBalance, 5000);
+      expect(reopened.transactions.single.creditCardId, 'card-primary');
+      reopened.dispose();
+    } finally {
+      await repository?.close();
       await tempDirectory.delete(recursive: true);
     }
   });

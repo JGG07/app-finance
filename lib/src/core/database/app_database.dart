@@ -57,7 +57,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -117,6 +117,24 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 5) {
             await migrator.createTable(taskReminders);
+          }
+          if (from < 6) {
+            final transactionsTableExists = await customSelect(
+              """
+              SELECT 1 AS value
+              FROM sqlite_master
+              WHERE type = 'table' AND name = 'transactions'
+              """,
+            ).getSingleOrNull();
+            if (transactionsTableExists == null) {
+              await migrator.createTable(transactions);
+            } else {
+              await migrator.addColumn(transactions, transactions.creditCardId);
+              await migrator.addColumn(
+                transactions,
+                transactions.cardTransactionKind,
+              );
+            }
           }
         },
         beforeOpen: (_) async {

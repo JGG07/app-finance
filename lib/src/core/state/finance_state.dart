@@ -24,6 +24,8 @@ import '../../features/tandas/domain/tanda_receipt.dart';
 import '../../features/tandas/domain/tanda_receipt_link.dart';
 
 class FinanceState extends ChangeNotifier {
+  static const String cardPaymentCategoryTitle = 'Pago a tarjeta';
+
   FinanceState({
     FinanceStorage? repository,
     TaskNotificationScheduler? notificationScheduler,
@@ -62,6 +64,7 @@ class FinanceState extends ChangeNotifier {
       NotificationPermissionStatus.notConfigured;
   String? _notificationError;
   String? _pendingTaskNavigationId;
+  String? _pendingCardPaymentNavigationId;
   bool _isLoading = false;
   bool _isInitialized;
   bool _isRetryingSave = false;
@@ -84,6 +87,7 @@ class FinanceState extends ChangeNotifier {
   bool get notificationsAvailable =>
       _notificationPermissionStatus == NotificationPermissionStatus.granted;
   String? get pendingTaskNavigationId => _pendingTaskNavigationId;
+  String? get pendingCardPaymentNavigationId => _pendingCardPaymentNavigationId;
   double get monthlyIncome => _monthlyIncome;
   FinancePeriod get selectedPeriod => _selectedPeriod;
   List<BudgetCategory> get categories => List.unmodifiable(
@@ -130,6 +134,8 @@ class FinanceState extends ChangeNotifier {
   List<TandaContribution> get tandaContributions =>
       List.unmodifiable(_tandaContributions);
   List<TandaReceipt> get tandaReceipts => List.unmodifiable(_tandaReceipts);
+
+  String cardPaymentTaskId(String cardId) => 'card-payment-$cardId';
 
   TandaReceipt? receiptForTanda(String tandaId) {
     final matches = _tandaReceipts.where((item) => item.tandaId == tandaId);
@@ -713,9 +719,25 @@ class FinanceState extends ChangeNotifier {
     _notifyIfActive();
   }
 
+  void consumePendingCardPaymentNavigation() {
+    if (_pendingCardPaymentNavigationId == null) return;
+    _pendingCardPaymentNavigationId = null;
+    _notifyIfActive();
+  }
+
   TaskReminder? taskReminderFor(String taskId) {
     final matches = _taskReminders.where((item) => item.taskId == taskId);
     return matches.isEmpty ? null : matches.single;
+  }
+
+  FinancialTask? financialTaskById(String taskId) {
+    for (final task in monthlyFinancialTasks) {
+      if (task.id == taskId) {
+        return task;
+      }
+    }
+
+    return null;
   }
 
   DateTime? scheduledTaskReminderFor(FinancialTask task) {
@@ -773,7 +795,15 @@ class FinanceState extends ChangeNotifier {
   void _handleNotificationPayload(String payload) {
     if (!payload.startsWith('task:')) return;
     final taskId = payload.substring('task:'.length);
-    if (taskId.isEmpty || taskId == _pendingTaskNavigationId) return;
+    if (taskId.isEmpty) return;
+    if (taskId.startsWith('card-payment-')) {
+      final cardId = taskId.substring('card-payment-'.length);
+      if (cardId.isEmpty || cardId == _pendingCardPaymentNavigationId) return;
+      _pendingCardPaymentNavigationId = cardId;
+      _notifyIfActive();
+      return;
+    }
+    if (taskId == _pendingTaskNavigationId) return;
     _pendingTaskNavigationId = taskId;
     _notifyIfActive();
   }
@@ -885,7 +915,7 @@ class FinanceState extends ChangeNotifier {
 
     final categoryName = _normalizeCategoryName(category.title);
     return transactionsForSelectedPeriod.where((transaction) {
-      return transaction.type == TransactionType.expense &&
+      return _isConsumptionExpense(transaction) &&
           _normalizeCategoryName(transaction.category) == categoryName;
     }).fold(0, (sum, transaction) => sum + transaction.amount);
   }
@@ -990,7 +1020,7 @@ class FinanceState extends ChangeNotifier {
 
   double get totalSpent {
     return transactionsForSelectedPeriod
-        .where((transaction) => transaction.type == TransactionType.expense)
+        .where(_isConsumptionExpense)
         .fold(0, (sum, transaction) => sum + transaction.amount);
   }
 
@@ -1007,7 +1037,7 @@ class FinanceState extends ChangeNotifier {
   }
 
   bool _isBudgetedExpense(TransactionEntry transaction) {
-    if (transaction.type != TransactionType.expense) {
+    if (!_isConsumptionExpense(transaction)) {
       return false;
     }
 
@@ -1019,14 +1049,18 @@ class FinanceState extends ChangeNotifier {
   }
 
   bool _isAntExpense(TransactionEntry transaction) {
-    return transaction.type == TransactionType.expense &&
+    return _isConsumptionExpense(transaction) &&
         _normalizeCategoryName(transaction.category) ==
             _normalizeCategoryName(BudgetCategory.antExpenseTitle);
   }
 
   bool _isUnbudgetedExpense(TransactionEntry transaction) {
-    return transaction.type == TransactionType.expense &&
+    return _isConsumptionExpense(transaction) &&
         !_isBudgetedExpense(transaction);
+  }
+
+  bool _isConsumptionExpense(TransactionEntry transaction) {
+    return transaction.type == TransactionType.expense;
   }
 
   // Budgeted expenses match a regular budget category, ant expenses match the
@@ -1082,15 +1116,28 @@ class FinanceState extends ChangeNotifier {
 
     return [
       ..._creditCards.map((card) {
+        final cardPaymentAmount = cardMonthlyPaymentAmount(card.id);
+        final dueDate = cardPaymentCaptureDueDate(card.id, now: now);
+        final isPending = isCardPaymentPendingCapture(card.id);
+        final isProvisional = isCardPaymentProvisional(card.id);
         return FinancialTask(
           id: 'card-payment-${card.id}',
-          title: 'Pagar ${_friendlyCardName(card.name)}',
-          amount: cardMonthlyPaymentAmount(card.id),
+          title: isPending
+              ? 'Agregar pago de ${_friendlyCardName(card.name)}'
+              : isProvisional
+                  ? 'Capturar pago de ${_friendlyCardName(card.name)} (estimado)'
+                  : 'Pagar ${_friendlyCardName(card.name)}',
+          amount: cardPaymentAmount,
           type: FinancialTaskType.cardPayment,
           status: FinancialTaskStatus.pending,
           dueDate: dueDate,
           sourceId: card.id,
           sourceType: FinancialTaskSourceType.card,
+          notes: isPending
+              ? 'Pendiente de capturar.'
+              : isProvisional
+                  ? 'Solo incluye las mensualidades MSI registradas.'
+                  : null,
           createdAt: createdAt,
         );
       }),
@@ -1151,7 +1198,9 @@ class FinanceState extends ChangeNotifier {
           createdAt: createdAt,
         ),
       ],
-    ].where((task) => task.amount > 0).toList(growable: false);
+    ].where((task) {
+      return task.type == FinancialTaskType.cardPayment || task.amount > 0;
+    }).toList(growable: false);
   }
 
   List<CreditCardPurchase> purchasesForCard(String cardId) {
@@ -1223,12 +1272,7 @@ class FinanceState extends ChangeNotifier {
   }
 
   double estimatedCardMonthlyPayment(String cardId) {
-    final usedBalance = creditCardById(cardId)?.usedBalance ?? 0;
-    final installmentBalance = remainingInstallmentAmountForCard(cardId);
-
-    return (usedBalance - installmentBalance)
-        .clamp(0, double.infinity)
-        .toDouble();
+    return 0;
   }
 
   CreditCardMonthlyPayment cardMonthlyPaymentFor(String cardId) {
@@ -1276,6 +1320,89 @@ class FinanceState extends ChangeNotifier {
     return _creditCardPurchases.where((purchase) {
       return purchase.cardId == cardId && purchase.isInstallmentPurchase;
     }).fold(0, (sum, purchase) => sum + purchase.remainingAmount);
+  }
+
+  bool hasExplicitCardMonthlyPayment(String cardId) {
+    final source = cardMonthlyPaymentSource(cardId);
+    return source == CreditCardPaymentSource.manual ||
+        source == CreditCardPaymentSource.confirmed;
+  }
+
+  bool isCardPaymentPendingCapture(String cardId) {
+    return !hasExplicitCardMonthlyPayment(cardId) &&
+        monthlyInstallmentPaymentForCard(cardId) == 0;
+  }
+
+  bool isCardPaymentProvisional(String cardId) {
+    return !hasExplicitCardMonthlyPayment(cardId) &&
+        monthlyInstallmentPaymentForCard(cardId) > 0;
+  }
+
+  DateTime cardPaymentCaptureDueDate(String cardId, {DateTime? now}) {
+    final card = creditCardById(cardId);
+    final reference = now ?? DateTime.now();
+    if (card == null) {
+      return DateTime(reference.year, reference.month, reference.day + 1);
+    }
+
+    DateTime nextFor(int year, int month) {
+      final lastDay = DateTime(year, month + 1, 0).day;
+      final cutDay = card.statementCutDay.clamp(1, lastDay);
+      return DateTime(year, month, cutDay).add(const Duration(days: 1));
+    }
+
+    var candidate = nextFor(reference.year, reference.month);
+    if (!candidate.isAfter(reference)) {
+      candidate = nextFor(reference.year, reference.month + 1);
+    }
+    return candidate;
+  }
+
+  Future<bool> configureCardPaymentReminder(
+    String cardId, {
+    required bool enabled,
+    TaskReminderMode? mode,
+    int? hour,
+    int? minute,
+    DateTime? customScheduledAt,
+  }) async {
+    if (enabled && !_notificationPreferences.enabled) {
+      final granted = await enableTaskReminders();
+      if (!granted) return false;
+    }
+
+    updateTaskReminder(
+      cardPaymentTaskId(cardId),
+      enabled: enabled,
+      mode: mode,
+      hour: hour,
+      minute: minute,
+      customScheduledAt: customScheduledAt,
+    );
+    return true;
+  }
+
+  String cardPaymentReminderTitle(String cardId) {
+    final cardName = creditCardById(cardId)?.name ?? 'tu tarjeta';
+    return 'Agrega el pago de $cardName';
+  }
+
+  String cardPaymentReminderMessage(String cardId) {
+    final cardName = creditCardById(cardId)?.name ?? 'tu tarjeta';
+    return 'Tu corte ya paso. Captura el pago para no generar intereses de '
+        '$cardName para mantener actualizado tu plan.';
+  }
+
+  void _removeTaskReminder(String taskId) {
+    final reminder = taskReminderFor(taskId);
+    if (reminder != null && _notificationSchedulerInitialized) {
+      _pendingNotificationWork =
+          _pendingNotificationWork.catchError((_) {}).then((_) {
+        return _notificationScheduler
+            .cancelTaskReminder(reminder.notificationId);
+      });
+    }
+    _taskReminders.removeWhere((item) => item.taskId == taskId);
   }
 
   void updateMonthlyIncome(double amount) {
@@ -1538,6 +1665,8 @@ class FinanceState extends ChangeNotifier {
           category: nextTitle,
           date: transaction.date,
           type: transaction.type,
+          creditCardId: transaction.creditCardId,
+          cardTransactionKind: transaction.cardTransactionKind,
         );
       }).toList();
     }
@@ -1552,29 +1681,45 @@ class FinanceState extends ChangeNotifier {
     _persistAndNotify();
   }
 
-  void addTransaction({
+  String? addTransaction({
     required String title,
     required double amount,
     required String categoryTitle,
     required TransactionType type,
     required DateTime date,
+    String? creditCardId,
+    CardTransactionKind? cardTransactionKind,
   }) {
-    final newTransaction = TransactionEntry(
+    final newTransaction = _buildTransactionEntry(
       id: 'tx-${DateTime.now().microsecondsSinceEpoch}',
       title: title,
       amount: amount,
-      category: categoryTitle,
-      date: date,
+      categoryTitle: categoryTitle,
       type: type,
+      date: date,
+      creditCardId: creditCardId,
+      cardTransactionKind: cardTransactionKind,
     );
-
-    _transactions.insert(0, newTransaction);
-
-    if (type == TransactionType.expense) {
-      _addSpentToCategory(categoryTitle, amount);
+    if (newTransaction == null) {
+      return null;
     }
 
+    final nextTransactions = List<TransactionEntry>.of(_transactions)
+      ..add(newTransaction);
+    _sortTransactionsByDateDesc(nextTransactions);
+    final nextCreditCards = List<CreditCard>.of(_creditCards);
+    final nextCategories = List<BudgetCategory>.of(_categories);
+
+    if (!_applyTransactionCardEffect(nextCreditCards, newTransaction)) {
+      return null;
+    }
+    _applyTransactionCategoryEffect(nextCategories, newTransaction);
+
+    _transactions = nextTransactions;
+    _creditCards = nextCreditCards;
+    _categories = nextCategories;
     _persistAndNotify();
+    return newTransaction.id;
   }
 
   void _addGeneratedTransaction(TransactionEntry transaction) {
@@ -1587,6 +1732,89 @@ class FinanceState extends ChangeNotifier {
       throw ArgumentError('Movimiento generado invalido o duplicado.');
     }
     _transactions.insert(0, transaction);
+  }
+
+  bool updateTransaction(
+    String id, {
+    required String title,
+    required double amount,
+    required String categoryTitle,
+    required TransactionType type,
+    required DateTime date,
+    String? creditCardId,
+    CardTransactionKind? cardTransactionKind,
+  }) {
+    final index =
+        _transactions.indexWhere((transaction) => transaction.id == id);
+    if (index == -1) {
+      return false;
+    }
+
+    final current = _transactions[index];
+    final nextTransaction = _buildTransactionEntry(
+      id: current.id,
+      title: title,
+      amount: amount,
+      categoryTitle: categoryTitle,
+      type: type,
+      date: date,
+      creditCardId: creditCardId,
+      cardTransactionKind: cardTransactionKind,
+    );
+    if (nextTransaction == null) {
+      return false;
+    }
+
+    final nextTransactions = List<TransactionEntry>.of(_transactions);
+    final nextCreditCards = List<CreditCard>.of(_creditCards);
+    final nextCategories = List<BudgetCategory>.of(_categories);
+
+    if (!_revertTransactionCardEffect(nextCreditCards, current)) {
+      return false;
+    }
+    _applyTransactionCategoryEffect(
+      nextCategories,
+      current,
+      revert: true,
+    );
+    if (!_applyTransactionCardEffect(nextCreditCards, nextTransaction)) {
+      return false;
+    }
+    _applyTransactionCategoryEffect(nextCategories, nextTransaction);
+
+    nextTransactions[index] = nextTransaction;
+    _sortTransactionsByDateDesc(nextTransactions);
+    _transactions = nextTransactions;
+    _creditCards = nextCreditCards;
+    _categories = nextCategories;
+    _persistAndNotify();
+    return true;
+  }
+
+  String? registerCreditCardPayment({
+    required String cardId,
+    required double amount,
+    required DateTime date,
+    String? title,
+  }) {
+    final card = creditCardById(cardId);
+    if (card == null ||
+        amount <= 0 ||
+        !amount.isFinite ||
+        amount > card.usedBalance) {
+      return null;
+    }
+
+    final normalizedTitle = _blankToNull(title) ?? 'Pago a ${card.name}';
+    return addTransaction(
+      title: normalizedTitle,
+      amount: amount,
+      categoryTitle: cardPaymentCategoryTitle,
+      type: TransactionType.cardPayment,
+      date: date,
+      creditCardId: cardId,
+      cardTransactionKind: CardTransactionKind.payment,
+    );
   }
 
   void updateCreditCard(
@@ -1616,6 +1844,11 @@ class FinanceState extends ChangeNotifier {
     required double creditLimit,
     required double usedBalance,
     required int statementCutDay,
+    double? paymentAmount,
+    bool paymentConfirmed = false,
+    bool remindAfterCut = false,
+    TaskReminderMode? reminderMode,
+    DateTime? reminderCustomScheduledAt,
   }) {
     final normalizedName = name.trim();
     if (normalizedName.isEmpty ||
@@ -1626,15 +1859,64 @@ class FinanceState extends ChangeNotifier {
       return;
     }
 
+    final cardId = 'card-${DateTime.now().microsecondsSinceEpoch}';
     _creditCards.add(
       CreditCard(
-        id: 'card-${DateTime.now().microsecondsSinceEpoch}',
+        id: cardId,
         name: normalizedName,
         creditLimit: creditLimit,
         usedBalance: usedBalance,
         statementCutDay: statementCutDay,
       ),
     );
+    if (paymentAmount != null) {
+      _cardMonthlyPayments.add(
+        paymentConfirmed
+            ? CreditCardMonthlyPayment(
+                cardId: cardId,
+                confirmedAmount: paymentAmount,
+              )
+            : CreditCardMonthlyPayment(
+                cardId: cardId,
+                manualAmount: paymentAmount,
+              ),
+      );
+    }
+    if (remindAfterCut && paymentAmount == null) {
+      final now = DateTime.now();
+      final selectedMode = reminderMode ?? TaskReminderMode.sameDay;
+      final dueDate = cardPaymentCaptureDueDate(cardId, now: now);
+      final scheduledAt = selectedMode == TaskReminderMode.custom
+          ? reminderCustomScheduledAt
+          : null;
+      final usedIds = _taskReminders.map((item) => item.notificationId).toSet();
+      var nextId = 1000;
+      while (usedIds.contains(nextId)) {
+        nextId++;
+      }
+      _taskReminders.add(
+        TaskReminder(
+          taskId: cardPaymentTaskId(cardId),
+          notificationId: nextId,
+          enabled: true,
+          mode: selectedMode,
+          hour: now.hour,
+          minute: now.minute,
+          customScheduledAt:
+              selectedMode == TaskReminderMode.custom ? scheduledAt : null,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      if (selectedMode != TaskReminderMode.custom) {
+        _taskReminders[_taskReminders.length - 1] =
+            _taskReminders.last.copyWith(
+          hour: dueDate.hour,
+          minute: dueDate.minute,
+          updatedAt: now,
+        );
+      }
+    }
     _persistAndNotify();
   }
 
@@ -1677,6 +1959,7 @@ class FinanceState extends ChangeNotifier {
     } else {
       _cardMonthlyPayments[index] = next;
     }
+    _removeTaskReminder(cardPaymentTaskId(cardId));
     _persistAndNotify();
   }
 
@@ -1695,6 +1978,30 @@ class FinanceState extends ChangeNotifier {
     final nextBalance = (card.usedBalance - amount).clamp(0, double.infinity);
     _creditCards[index] = card.copyWith(usedBalance: nextBalance.toDouble());
     _persistAndNotify();
+  }
+
+  bool hasLinkedTransactionsForCard(String cardId) {
+    return _transactions
+        .any((transaction) => transaction.creditCardId == cardId);
+  }
+
+  bool deleteCreditCard(String id) {
+    if (hasLinkedTransactionsForCard(id)) {
+      return false;
+    }
+
+    final cardIndex = _creditCards.indexWhere((card) => card.id == id);
+    if (cardIndex == -1) {
+      return false;
+    }
+
+    _creditCards.removeAt(cardIndex);
+    _creditCardPurchases.removeWhere((purchase) => purchase.cardId == id);
+    _subscriptions.removeWhere((subscription) => subscription.cardId == id);
+    _cardMonthlyPayments.removeWhere((payment) => payment.cardId == id);
+    _removeTaskReminder(cardPaymentTaskId(id));
+    _persistAndNotify();
+    return true;
   }
 
   void addCreditCardPurchase({
@@ -1896,27 +2203,180 @@ class FinanceState extends ChangeNotifier {
     _persistAndNotify();
   }
 
-  void deleteTransaction(String id) {
+  bool deleteTransaction(String id) {
     final index = _transactions.indexWhere((transaction) {
       return transaction.id == id;
     });
 
     if (index == -1) {
+      return false;
+    }
+
+    final transaction = _transactions[index];
+    final nextTransactions = List<TransactionEntry>.of(_transactions)
+      ..removeAt(index);
+    final nextCreditCards = List<CreditCard>.of(_creditCards);
+    final nextCategories = List<BudgetCategory>.of(_categories);
+
+    if (!_revertTransactionCardEffect(nextCreditCards, transaction)) {
+      return false;
+    }
+    _applyTransactionCategoryEffect(nextCategories, transaction, revert: true);
+
+    _transactions = nextTransactions;
+    _creditCards = nextCreditCards;
+    _categories = nextCategories;
+    _persistAndNotify();
+    return true;
+  }
+
+  TransactionEntry? _buildTransactionEntry({
+    required String id,
+    required String title,
+    required double amount,
+    required String categoryTitle,
+    required TransactionType type,
+    required DateTime date,
+    String? creditCardId,
+    CardTransactionKind? cardTransactionKind,
+  }) {
+    final normalizedTitle = title.trim();
+    final normalizedCategory = categoryTitle.trim();
+    if (normalizedTitle.isEmpty ||
+        !amount.isFinite ||
+        amount <= 0 ||
+        date.year < 1) {
+      return null;
+    }
+
+    final hasCardLink = creditCardId != null || cardTransactionKind != null;
+    if (!hasCardLink) {
+      if (normalizedCategory.isEmpty) {
+        return null;
+      }
+      if (type == TransactionType.cardPayment) {
+        return null;
+      }
+      return TransactionEntry(
+        id: id,
+        title: normalizedTitle,
+        amount: amount,
+        category: normalizedCategory,
+        date: date,
+        type: type,
+      );
+    }
+
+    if (creditCardId == null ||
+        cardTransactionKind == null ||
+        creditCardById(creditCardId) == null) {
+      return null;
+    }
+
+    if (cardTransactionKind == CardTransactionKind.purchase &&
+        type != TransactionType.expense) {
+      return null;
+    }
+    if (cardTransactionKind == CardTransactionKind.payment &&
+        type != TransactionType.cardPayment) {
+      return null;
+    }
+
+    final category = cardTransactionKind == CardTransactionKind.payment
+        ? cardPaymentCategoryTitle
+        : normalizedCategory;
+    if (category.trim().isEmpty) {
+      return null;
+    }
+
+    return TransactionEntry(
+      id: id,
+      title: normalizedTitle,
+      amount: amount,
+      category: category,
+      date: date,
+      type: type,
+      creditCardId: creditCardId,
+      cardTransactionKind: cardTransactionKind,
+    );
+  }
+
+  bool _applyTransactionCardEffect(
+    List<CreditCard> cards,
+    TransactionEntry transaction,
+  ) {
+    final cardId = transaction.creditCardId;
+    final kind = transaction.cardTransactionKind;
+    if (cardId == null || kind == null) {
+      return true;
+    }
+
+    final cardIndex = cards.indexWhere((card) => card.id == cardId);
+    if (cardIndex == -1) {
+      return false;
+    }
+
+    final card = cards[cardIndex];
+    final delta = kind == CardTransactionKind.purchase
+        ? transaction.amount
+        : -transaction.amount;
+    final nextBalance = card.usedBalance + delta;
+    if (!nextBalance.isFinite || nextBalance < 0) {
+      return false;
+    }
+
+    cards[cardIndex] = card.copyWith(usedBalance: nextBalance);
+    return true;
+  }
+
+  bool _revertTransactionCardEffect(
+    List<CreditCard> cards,
+    TransactionEntry transaction,
+  ) {
+    final cardId = transaction.creditCardId;
+    final kind = transaction.cardTransactionKind;
+    if (cardId == null || kind == null) {
+      return true;
+    }
+
+    final cardIndex = cards.indexWhere((card) => card.id == cardId);
+    if (cardIndex == -1) {
+      return false;
+    }
+
+    final card = cards[cardIndex];
+    final delta = kind == CardTransactionKind.purchase
+        ? -transaction.amount
+        : transaction.amount;
+    final nextBalance = card.usedBalance + delta;
+    if (!nextBalance.isFinite || nextBalance < 0) {
+      return false;
+    }
+
+    cards[cardIndex] = card.copyWith(usedBalance: nextBalance);
+    return true;
+  }
+
+  void _applyTransactionCategoryEffect(
+    List<BudgetCategory> categories,
+    TransactionEntry transaction, {
+    bool revert = false,
+  }) {
+    if (!_isConsumptionExpense(transaction)) {
       return;
     }
 
-    final transaction = _transactions.removeAt(index);
-
-    if (transaction.type == TransactionType.expense) {
-      _addSpentToCategory(transaction.category, -transaction.amount);
-    }
-
-    _persistAndNotify();
+    final amount = revert ? -transaction.amount : transaction.amount;
+    _addSpentToCategoryIn(categories, transaction.category, amount);
   }
 
-  void _addSpentToCategory(String title, double amount) {
+  void _addSpentToCategoryIn(
+    List<BudgetCategory> categories,
+    String title,
+    double amount,
+  ) {
     final normalizedTitle = _normalizeCategoryName(title);
-    final index = _categories.indexWhere((category) {
+    final index = categories.indexWhere((category) {
       return _normalizeCategoryName(category.title) == normalizedTitle;
     });
 
@@ -1924,9 +2384,13 @@ class FinanceState extends ChangeNotifier {
       return;
     }
 
-    final category = _categories[index];
+    final category = categories[index];
     final nextSpent = (category.spent + amount).clamp(0, double.infinity);
-    _categories[index] = category.copyWith(spent: nextSpent.toDouble());
+    categories[index] = category.copyWith(spent: nextSpent.toDouble());
+  }
+
+  void _sortTransactionsByDateDesc(List<TransactionEntry> transactions) {
+    transactions.sort((a, b) => b.date.compareTo(a.date));
   }
 
   void _persistAndNotify() {
@@ -1988,10 +2452,16 @@ class FinanceState extends ChangeNotifier {
       final dueDate = task.dueDate!;
       final dueLabel = '${dueDate.day.toString().padLeft(2, '0')}/'
           '${dueDate.month.toString().padLeft(2, '0')}';
+      final title = task.type == FinancialTaskType.cardPayment
+          ? cardPaymentReminderTitle(task.sourceId ?? '')
+          : 'App Finance';
+      final body = task.type == FinancialTaskType.cardPayment
+          ? cardPaymentReminderMessage(task.sourceId ?? '')
+          : 'Tienes una tarea financiera pendiente para el $dueLabel.';
       await _notificationScheduler.scheduleTaskReminder(
         notificationId: reminder.notificationId,
-        title: 'App Finance',
-        body: 'Tienes una tarea financiera pendiente para el $dueLabel.',
+        title: title,
+        body: body,
         scheduledAt: scheduledAt,
         payload: 'task:${task.id}',
       );

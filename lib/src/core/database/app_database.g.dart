@@ -538,9 +538,29 @@ class $TransactionsTable extends Transactions
   late final GeneratedColumn<String> type = GeneratedColumn<String>(
       'type', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _creditCardIdMeta =
+      const VerificationMeta('creditCardId');
   @override
-  List<GeneratedColumn> get $columns =>
-      [id, title, amount, category, date, type];
+  late final GeneratedColumn<String> creditCardId = GeneratedColumn<String>(
+      'credit_card_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _cardTransactionKindMeta =
+      const VerificationMeta('cardTransactionKind');
+  @override
+  late final GeneratedColumn<String> cardTransactionKind =
+      GeneratedColumn<String>('card_transaction_kind', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        title,
+        amount,
+        category,
+        date,
+        type,
+        creditCardId,
+        cardTransactionKind
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -586,6 +606,18 @@ class $TransactionsTable extends Transactions
     } else if (isInserting) {
       context.missing(_typeMeta);
     }
+    if (data.containsKey('credit_card_id')) {
+      context.handle(
+          _creditCardIdMeta,
+          creditCardId.isAcceptableOrUnknown(
+              data['credit_card_id']!, _creditCardIdMeta));
+    }
+    if (data.containsKey('card_transaction_kind')) {
+      context.handle(
+          _cardTransactionKindMeta,
+          cardTransactionKind.isAcceptableOrUnknown(
+              data['card_transaction_kind']!, _cardTransactionKindMeta));
+    }
     return context;
   }
 
@@ -607,6 +639,10 @@ class $TransactionsTable extends Transactions
           .read(DriftSqlType.dateTime, data['${effectivePrefix}date'])!,
       type: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}type'])!,
+      creditCardId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}credit_card_id']),
+      cardTransactionKind: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}card_transaction_kind']),
     );
   }
 
@@ -623,13 +659,17 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   final String category;
   final DateTime date;
   final String type;
+  final String? creditCardId;
+  final String? cardTransactionKind;
   const Transaction(
       {required this.id,
       required this.title,
       required this.amount,
       required this.category,
       required this.date,
-      required this.type});
+      required this.type,
+      this.creditCardId,
+      this.cardTransactionKind});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -639,6 +679,12 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     map['category'] = Variable<String>(category);
     map['date'] = Variable<DateTime>(date);
     map['type'] = Variable<String>(type);
+    if (!nullToAbsent || creditCardId != null) {
+      map['credit_card_id'] = Variable<String>(creditCardId);
+    }
+    if (!nullToAbsent || cardTransactionKind != null) {
+      map['card_transaction_kind'] = Variable<String>(cardTransactionKind);
+    }
     return map;
   }
 
@@ -650,6 +696,12 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       category: Value(category),
       date: Value(date),
       type: Value(type),
+      creditCardId: creditCardId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(creditCardId),
+      cardTransactionKind: cardTransactionKind == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cardTransactionKind),
     );
   }
 
@@ -663,6 +715,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       category: serializer.fromJson<String>(json['category']),
       date: serializer.fromJson<DateTime>(json['date']),
       type: serializer.fromJson<String>(json['type']),
+      creditCardId: serializer.fromJson<String?>(json['creditCardId']),
+      cardTransactionKind:
+          serializer.fromJson<String?>(json['cardTransactionKind']),
     );
   }
   @override
@@ -675,6 +730,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       'category': serializer.toJson<String>(category),
       'date': serializer.toJson<DateTime>(date),
       'type': serializer.toJson<String>(type),
+      'creditCardId': serializer.toJson<String?>(creditCardId),
+      'cardTransactionKind': serializer.toJson<String?>(cardTransactionKind),
     };
   }
 
@@ -684,7 +741,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           double? amount,
           String? category,
           DateTime? date,
-          String? type}) =>
+          String? type,
+          Value<String?> creditCardId = const Value.absent(),
+          Value<String?> cardTransactionKind = const Value.absent()}) =>
       Transaction(
         id: id ?? this.id,
         title: title ?? this.title,
@@ -692,6 +751,11 @@ class Transaction extends DataClass implements Insertable<Transaction> {
         category: category ?? this.category,
         date: date ?? this.date,
         type: type ?? this.type,
+        creditCardId:
+            creditCardId.present ? creditCardId.value : this.creditCardId,
+        cardTransactionKind: cardTransactionKind.present
+            ? cardTransactionKind.value
+            : this.cardTransactionKind,
       );
   Transaction copyWithCompanion(TransactionsCompanion data) {
     return Transaction(
@@ -701,6 +765,12 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       category: data.category.present ? data.category.value : this.category,
       date: data.date.present ? data.date.value : this.date,
       type: data.type.present ? data.type.value : this.type,
+      creditCardId: data.creditCardId.present
+          ? data.creditCardId.value
+          : this.creditCardId,
+      cardTransactionKind: data.cardTransactionKind.present
+          ? data.cardTransactionKind.value
+          : this.cardTransactionKind,
     );
   }
 
@@ -712,13 +782,16 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           ..write('amount: $amount, ')
           ..write('category: $category, ')
           ..write('date: $date, ')
-          ..write('type: $type')
+          ..write('type: $type, ')
+          ..write('creditCardId: $creditCardId, ')
+          ..write('cardTransactionKind: $cardTransactionKind')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, title, amount, category, date, type);
+  int get hashCode => Object.hash(id, title, amount, category, date, type,
+      creditCardId, cardTransactionKind);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -728,7 +801,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           other.amount == this.amount &&
           other.category == this.category &&
           other.date == this.date &&
-          other.type == this.type);
+          other.type == this.type &&
+          other.creditCardId == this.creditCardId &&
+          other.cardTransactionKind == this.cardTransactionKind);
 }
 
 class TransactionsCompanion extends UpdateCompanion<Transaction> {
@@ -738,6 +813,8 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
   final Value<String> category;
   final Value<DateTime> date;
   final Value<String> type;
+  final Value<String?> creditCardId;
+  final Value<String?> cardTransactionKind;
   final Value<int> rowid;
   const TransactionsCompanion({
     this.id = const Value.absent(),
@@ -746,6 +823,8 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.category = const Value.absent(),
     this.date = const Value.absent(),
     this.type = const Value.absent(),
+    this.creditCardId = const Value.absent(),
+    this.cardTransactionKind = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   TransactionsCompanion.insert({
@@ -755,6 +834,8 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     required String category,
     required DateTime date,
     required String type,
+    this.creditCardId = const Value.absent(),
+    this.cardTransactionKind = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         title = Value(title),
@@ -769,6 +850,8 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Expression<String>? category,
     Expression<DateTime>? date,
     Expression<String>? type,
+    Expression<String>? creditCardId,
+    Expression<String>? cardTransactionKind,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -778,6 +861,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       if (category != null) 'category': category,
       if (date != null) 'date': date,
       if (type != null) 'type': type,
+      if (creditCardId != null) 'credit_card_id': creditCardId,
+      if (cardTransactionKind != null)
+        'card_transaction_kind': cardTransactionKind,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -789,6 +875,8 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       Value<String>? category,
       Value<DateTime>? date,
       Value<String>? type,
+      Value<String?>? creditCardId,
+      Value<String?>? cardTransactionKind,
       Value<int>? rowid}) {
     return TransactionsCompanion(
       id: id ?? this.id,
@@ -797,6 +885,8 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       category: category ?? this.category,
       date: date ?? this.date,
       type: type ?? this.type,
+      creditCardId: creditCardId ?? this.creditCardId,
+      cardTransactionKind: cardTransactionKind ?? this.cardTransactionKind,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -822,6 +912,13 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     if (type.present) {
       map['type'] = Variable<String>(type.value);
     }
+    if (creditCardId.present) {
+      map['credit_card_id'] = Variable<String>(creditCardId.value);
+    }
+    if (cardTransactionKind.present) {
+      map['card_transaction_kind'] =
+          Variable<String>(cardTransactionKind.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -837,6 +934,8 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
           ..write('category: $category, ')
           ..write('date: $date, ')
           ..write('type: $type, ')
+          ..write('creditCardId: $creditCardId, ')
+          ..write('cardTransactionKind: $cardTransactionKind, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -6733,6 +6832,8 @@ typedef $$TransactionsTableCreateCompanionBuilder = TransactionsCompanion
   required String category,
   required DateTime date,
   required String type,
+  Value<String?> creditCardId,
+  Value<String?> cardTransactionKind,
   Value<int> rowid,
 });
 typedef $$TransactionsTableUpdateCompanionBuilder = TransactionsCompanion
@@ -6743,6 +6844,8 @@ typedef $$TransactionsTableUpdateCompanionBuilder = TransactionsCompanion
   Value<String> category,
   Value<DateTime> date,
   Value<String> type,
+  Value<String?> creditCardId,
+  Value<String?> cardTransactionKind,
   Value<int> rowid,
 });
 
@@ -6772,6 +6875,13 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<String> get type => $composableBuilder(
       column: $table.type, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get creditCardId => $composableBuilder(
+      column: $table.creditCardId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get cardTransactionKind => $composableBuilder(
+      column: $table.cardTransactionKind,
+      builder: (column) => ColumnFilters(column));
 }
 
 class $$TransactionsTableOrderingComposer
@@ -6800,6 +6910,14 @@ class $$TransactionsTableOrderingComposer
 
   ColumnOrderings<String> get type => $composableBuilder(
       column: $table.type, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get creditCardId => $composableBuilder(
+      column: $table.creditCardId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get cardTransactionKind => $composableBuilder(
+      column: $table.cardTransactionKind,
+      builder: (column) => ColumnOrderings(column));
 }
 
 class $$TransactionsTableAnnotationComposer
@@ -6828,6 +6946,12 @@ class $$TransactionsTableAnnotationComposer
 
   GeneratedColumn<String> get type =>
       $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<String> get creditCardId => $composableBuilder(
+      column: $table.creditCardId, builder: (column) => column);
+
+  GeneratedColumn<String> get cardTransactionKind => $composableBuilder(
+      column: $table.cardTransactionKind, builder: (column) => column);
 }
 
 class $$TransactionsTableTableManager extends RootTableManager<
@@ -6862,6 +6986,8 @@ class $$TransactionsTableTableManager extends RootTableManager<
             Value<String> category = const Value.absent(),
             Value<DateTime> date = const Value.absent(),
             Value<String> type = const Value.absent(),
+            Value<String?> creditCardId = const Value.absent(),
+            Value<String?> cardTransactionKind = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               TransactionsCompanion(
@@ -6871,6 +6997,8 @@ class $$TransactionsTableTableManager extends RootTableManager<
             category: category,
             date: date,
             type: type,
+            creditCardId: creditCardId,
+            cardTransactionKind: cardTransactionKind,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -6880,6 +7008,8 @@ class $$TransactionsTableTableManager extends RootTableManager<
             required String category,
             required DateTime date,
             required String type,
+            Value<String?> creditCardId = const Value.absent(),
+            Value<String?> cardTransactionKind = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               TransactionsCompanion.insert(
@@ -6889,6 +7019,8 @@ class $$TransactionsTableTableManager extends RootTableManager<
             category: category,
             date: date,
             type: type,
+            creditCardId: creditCardId,
+            cardTransactionKind: cardTransactionKind,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

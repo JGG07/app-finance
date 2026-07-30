@@ -1,4 +1,6 @@
 import 'package:app_finance/src/core/domain/finance_period.dart';
+import 'package:app_finance/src/core/database/finance_snapshot.dart';
+import 'package:app_finance/src/core/database/repositories/finance_repository.dart';
 import 'package:app_finance/src/core/state/finance_state.dart';
 import 'package:app_finance/src/core/utils/currency_converter.dart';
 import 'package:app_finance/src/features/budgets/domain/monthly_extra.dart';
@@ -203,6 +205,52 @@ void main() {
     expect(state.creditCards.single.statementCutDay, 12);
   });
 
+  test('creating a card with manual payment stores CreditCardMonthlyPayment',
+      () {
+    final state = FinanceState();
+
+    state.addCreditCard(
+      name: 'Tarjeta principal',
+      creditLimit: 25000,
+      usedBalance: 1500,
+      statementCutDay: 12,
+      paymentAmount: 4321.50,
+    );
+
+    final cardId = state.creditCards.single.id;
+    final payment = state.cardMonthlyPaymentFor(cardId);
+    expect(payment.manualAmount, 4321.50);
+    expect(payment.confirmedAmount, isNull);
+    expect(
+      state.cardMonthlyPaymentSource(cardId),
+      CreditCardPaymentSource.manual,
+    );
+    expect(state.cardMonthlyPaymentAmount(cardId), 4321.50);
+  });
+
+  test('creating a card with confirmed payment stores confirmed source', () {
+    final state = FinanceState();
+
+    state.addCreditCard(
+      name: 'Tarjeta principal',
+      creditLimit: 25000,
+      usedBalance: 1500,
+      statementCutDay: 12,
+      paymentAmount: 4321.50,
+      paymentConfirmed: true,
+    );
+
+    final cardId = state.creditCards.single.id;
+    final payment = state.cardMonthlyPaymentFor(cardId);
+    expect(payment.confirmedAmount, 4321.50);
+    expect(payment.manualAmount, isNull);
+    expect(
+      state.cardMonthlyPaymentSource(cardId),
+      CreditCardPaymentSource.confirmed,
+    );
+    expect(state.cardMonthlyPaymentAmount(cardId), 4321.50);
+  });
+
   test('calculates monthly plan from fixed budget and card payments', () {
     final state = FinanceState();
     state.updateMonthlyIncome(40000);
@@ -223,17 +271,17 @@ void main() {
 
     expect(state.totalAllocated, 7800);
     expect(state.totalMonthlyExtras, 3800);
-    expect(state.totalMonthlyCardPayments, 5000);
-    expect(state.totalPlannedExpenses, 16600);
-    expect(state.availableAfterMonthlyPlan, 23400);
-    expect(state.totalFree, 23400);
+    expect(state.totalMonthlyCardPayments, 0);
+    expect(state.totalPlannedExpenses, 11600);
+    expect(state.availableAfterMonthlyPlan, 28400);
+    expect(state.totalFree, 28400);
 
     state.updateSurplusPlan(SurplusPlanType.balanced);
 
-    expect(state.surplusPlanAllocation.safetyNet, 9360);
-    expect(state.surplusPlanAllocation.investment, 9360);
-    expect(state.surplusPlanAllocation.freeUse, 4680);
-    expect(state.totalFree, 4680);
+    expect(state.surplusPlanAllocation.safetyNet, 11360);
+    expect(state.surplusPlanAllocation.investment, 11360);
+    expect(state.surplusPlanAllocation.freeUse, 5680);
+    expect(state.totalFree, 5680);
   });
 
   test('manual card payment overrides confirmed and estimated amounts', () {
@@ -246,7 +294,7 @@ void main() {
     );
     final cardId = state.creditCards.single.id;
 
-    expect(state.cardMonthlyPaymentAmount(cardId), 5000);
+    expect(state.cardMonthlyPaymentAmount(cardId), 0);
 
     state.updateCardMonthlyPayment(cardId, 3000);
 
@@ -272,13 +320,13 @@ void main() {
       date: DateTime(2026, 6, 1),
     );
 
-    expect(state.estimatedCardMonthlyPayment(cardId), 4000);
+    expect(state.estimatedCardMonthlyPayment(cardId), 0);
     expect(state.monthlyInstallmentPaymentForCard(cardId), 1000);
     expect(
       state.cardMonthlyPaymentSource(cardId),
       CreditCardPaymentSource.estimated,
     );
-    expect(state.cardMonthlyPaymentAmount(cardId), 5000);
+    expect(state.cardMonthlyPaymentAmount(cardId), 1000);
   });
 
   test('manual card payment with MSI does not add installments twice', () {
@@ -370,8 +418,8 @@ void main() {
       state.cardMonthlyPaymentSource(cardId),
       CreditCardPaymentSource.estimated,
     );
-    expect(state.cardMonthlyPaymentAmount(cardId), 5000);
-    expect(state.totalMonthlyCardPayments, 5000);
+    expect(state.cardMonthlyPaymentAmount(cardId), 1000);
+    expect(state.totalMonthlyCardPayments, 1000);
   });
 
   test('total monthly card payments uses corrected per-card amounts', () {
@@ -408,8 +456,78 @@ void main() {
     state.updateCardMonthlyPayment(manualCardId, 10000);
 
     expect(state.cardMonthlyPaymentAmount(manualCardId), 10000);
-    expect(state.cardMonthlyPaymentAmount(estimatedCardId), 6200);
-    expect(state.totalMonthlyCardPayments, 16200);
+    expect(state.cardMonthlyPaymentAmount(estimatedCardId), 600);
+    expect(state.totalMonthlyCardPayments, 10600);
+  });
+
+  test('creating a card without payment does not use used balance as payment',
+      () {
+    final state = FinanceState();
+
+    state.addCreditCard(
+      name: 'Tarjeta dorada',
+      creditLimit: 56200,
+      usedBalance: 56093.41,
+      statementCutDay: 19,
+    );
+
+    final cardId = state.creditCards.single.id;
+    expect(
+      state.cardMonthlyPaymentSource(cardId),
+      CreditCardPaymentSource.estimated,
+    );
+    expect(state.cardMonthlyPaymentAmount(cardId), 0);
+    expect(state.isCardPaymentPendingCapture(cardId), isTrue);
+  });
+
+  test('card without payment and without MSI returns zero', () {
+    final state = FinanceState();
+
+    state.addCreditCard(
+      name: 'Tarjeta dorada',
+      creditLimit: 56200,
+      usedBalance: 56093.41,
+      statementCutDay: 19,
+    );
+
+    final cardId = state.creditCards.single.id;
+    expect(state.monthlyInstallmentPaymentForCard(cardId), 0);
+    expect(state.cardMonthlyPaymentAmount(cardId), 0);
+  });
+
+  test('existing cards without payment stay pending until captured', () {
+    final state = FinanceState();
+
+    state.addCreditCard(
+      name: 'Tarjeta dorada',
+      creditLimit: 56200,
+      usedBalance: 56093.41,
+      statementCutDay: 19,
+    );
+
+    final cardId = state.creditCards.single.id;
+    expect(state.hasExplicitCardMonthlyPayment(cardId), isFalse);
+    expect(state.isCardPaymentPendingCapture(cardId), isTrue);
+    expect(state.cardMonthlyPaymentAmount(cardId), 0);
+  });
+
+  test('plan does not sum used balance as monthly debt when payment is pending',
+      () {
+    final state = FinanceState();
+    state.updateMonthlyIncome(40000);
+    state.addCreditCard(
+      name: 'Tarjeta dorada',
+      creditLimit: 56200,
+      usedBalance: 56093.41,
+      statementCutDay: 19,
+    );
+
+    final task = state.monthlyFinancialTasks.singleWhere(
+      (item) => item.type.name == 'cardPayment',
+    );
+    expect(task.amount, 0);
+    expect(state.totalMonthlyCardPayments, 0);
+    expect(state.totalPlannedExpenses, 0);
   });
 
   test('changing payment does not modify card utilization percent', () {
@@ -757,4 +875,533 @@ void main() {
     expect(state.transactions.single.category, 'Transporte');
     expect(state.totalSpent, 250);
   });
+
+  test('expense without card does not modify used balance', () {
+    final state = FinanceState();
+    state.addCategory('Comida', 1000, Colors.green);
+    state.addCreditCard(
+      name: 'Tarjeta',
+      creditLimit: 10000,
+      usedBalance: 2500,
+      statementCutDay: 10,
+    );
+
+    state.addTransaction(
+      title: 'Super',
+      amount: 200,
+      categoryTitle: 'Comida',
+      type: TransactionType.expense,
+      date: DateTime(2026, 7, 10),
+    );
+
+    expect(state.creditCards.single.usedBalance, 2500);
+  });
+
+  test('card purchase increments used balance and counts as expense', () {
+    final state = FinanceState();
+    state.addCategory('Comida', 1000, Colors.green);
+    state.addCreditCard(
+      name: 'Tarjeta',
+      creditLimit: 10000,
+      usedBalance: 2500,
+      statementCutDay: 10,
+    );
+    final cardId = state.creditCards.single.id;
+
+    state.addTransaction(
+      title: 'Super',
+      amount: 200,
+      categoryTitle: 'Comida',
+      type: TransactionType.expense,
+      date: DateTime(2026, 7, 10),
+      creditCardId: cardId,
+      cardTransactionKind: CardTransactionKind.purchase,
+    );
+
+    expect(state.creditCards.single.usedBalance, 2700);
+    expect(state.totalExpenses, 200);
+    expect(state.totalBudgetUtilized, 200);
+    expect(state.creditCardPurchases, isEmpty);
+  });
+
+  test('card payment decreases used balance and does not count as expense', () {
+    final state = FinanceState();
+    state.addCategory('Comida', 1000, Colors.green);
+    state.addCreditCard(
+      name: 'Tarjeta',
+      creditLimit: 10000,
+      usedBalance: 2500,
+      statementCutDay: 10,
+    );
+    final cardId = state.creditCards.single.id;
+
+    final transactionId = state.registerCreditCardPayment(
+      cardId: cardId,
+      amount: 300,
+      date: DateTime(2026, 7, 10),
+    );
+
+    expect(transactionId, isNotNull);
+    expect(state.creditCards.single.usedBalance, 2200);
+    expect(state.transactions.single.type, TransactionType.cardPayment);
+    expect(
+      state.transactions.single.cardTransactionKind,
+      CardTransactionKind.payment,
+    );
+    expect(state.totalExpenses, 0);
+    expect(state.totalBudgetUtilized, 0);
+    expect(state.antExpenseSpent, 0);
+    expect(state.cardMonthlyPaymentAmount(cardId), 0);
+  });
+
+  test('card payment does not allow negative used balance', () {
+    final state = FinanceState();
+    state.addCreditCard(
+      name: 'Tarjeta',
+      creditLimit: 10000,
+      usedBalance: 250,
+      statementCutDay: 10,
+    );
+    final cardId = state.creditCards.single.id;
+
+    final transactionId = state.registerCreditCardPayment(
+      cardId: cardId,
+      amount: 300,
+      date: DateTime(2026, 7, 10),
+    );
+
+    expect(transactionId, isNull);
+    expect(state.creditCards.single.usedBalance, 250);
+    expect(state.transactions, isEmpty);
+  });
+
+  test('card payment does not affect ant expense or budget metrics', () {
+    final state = FinanceState();
+    state.addCreditCard(
+      name: 'Tarjeta',
+      creditLimit: 10000,
+      usedBalance: 2500,
+      statementCutDay: 10,
+    );
+    final cardId = state.creditCards.single.id;
+
+    state.addTransaction(
+      title: 'Cafe',
+      amount: 80,
+      categoryTitle: BudgetCategory.antExpenseTitle,
+      type: TransactionType.expense,
+      date: DateTime(2026, 7, 10),
+    );
+    state.registerCreditCardPayment(
+      cardId: cardId,
+      amount: 300,
+      date: DateTime(2026, 7, 11),
+    );
+
+    expect(state.antExpenseSpent, 80);
+    expect(state.totalExpenses, 80);
+    expect(state.unbudgetedExpensesForSelectedPeriod, 80);
+  });
+
+  test('editing card purchase amount applies only the difference', () {
+    final state = FinanceState();
+    state.addCategory('Comida', 1000, Colors.green);
+    state.addCreditCard(
+      name: 'Tarjeta',
+      creditLimit: 10000,
+      usedBalance: 1000,
+      statementCutDay: 10,
+    );
+    final cardId = state.creditCards.single.id;
+    final transactionId = state.addTransaction(
+      title: 'Super',
+      amount: 1000,
+      categoryTitle: 'Comida',
+      type: TransactionType.expense,
+      date: DateTime(2026, 7, 10),
+      creditCardId: cardId,
+      cardTransactionKind: CardTransactionKind.purchase,
+    )!;
+
+    final updated = state.updateTransaction(
+      transactionId,
+      title: 'Super',
+      amount: 1300,
+      categoryTitle: 'Comida',
+      type: TransactionType.expense,
+      date: DateTime(2026, 7, 10),
+      creditCardId: cardId,
+      cardTransactionKind: CardTransactionKind.purchase,
+    );
+
+    expect(updated, isTrue);
+    expect(state.creditCards.single.usedBalance, 2300);
+  });
+
+  test('editing card payment amount applies only the difference', () {
+    final state = FinanceState();
+    state.addCreditCard(
+      name: 'Tarjeta',
+      creditLimit: 10000,
+      usedBalance: 2500,
+      statementCutDay: 10,
+    );
+    final cardId = state.creditCards.single.id;
+    final transactionId = state.registerCreditCardPayment(
+      cardId: cardId,
+      amount: 500,
+      date: DateTime(2026, 7, 10),
+    )!;
+
+    final updated = state.updateTransaction(
+      transactionId,
+      title: 'Pago a Tarjeta',
+      amount: 800,
+      categoryTitle: FinanceState.cardPaymentCategoryTitle,
+      type: TransactionType.cardPayment,
+      date: DateTime(2026, 7, 10),
+      creditCardId: cardId,
+      cardTransactionKind: CardTransactionKind.payment,
+    );
+
+    expect(updated, isTrue);
+    expect(state.creditCards.single.usedBalance, 1700);
+  });
+
+  test('moving a card purchase from card A to B reverts and reapplies', () {
+    final state = FinanceState();
+    state.addCategory('Comida', 1000, Colors.green);
+    state.addCreditCard(
+      name: 'A',
+      creditLimit: 10000,
+      usedBalance: 1000,
+      statementCutDay: 10,
+    );
+    state.addCreditCard(
+      name: 'B',
+      creditLimit: 10000,
+      usedBalance: 500,
+      statementCutDay: 10,
+    );
+    final cardA = state.creditCards.first.id;
+    final cardB = state.creditCards.last.id;
+    final transactionId = state.addTransaction(
+      title: 'Super',
+      amount: 1000,
+      categoryTitle: 'Comida',
+      type: TransactionType.expense,
+      date: DateTime(2026, 7, 10),
+      creditCardId: cardA,
+      cardTransactionKind: CardTransactionKind.purchase,
+    )!;
+
+    final updated = state.updateTransaction(
+      transactionId,
+      title: 'Super',
+      amount: 1000,
+      categoryTitle: 'Comida',
+      type: TransactionType.expense,
+      date: DateTime(2026, 7, 10),
+      creditCardId: cardB,
+      cardTransactionKind: CardTransactionKind.purchase,
+    );
+
+    expect(updated, isTrue);
+    expect(state.creditCardById(cardA)!.usedBalance, 1000);
+    expect(state.creditCardById(cardB)!.usedBalance, 1500);
+  });
+
+  test('unlinking a card purchase reverts used balance', () {
+    final state = FinanceState();
+    state.addCategory('Comida', 1000, Colors.green);
+    state.addCreditCard(
+      name: 'Tarjeta',
+      creditLimit: 10000,
+      usedBalance: 1000,
+      statementCutDay: 10,
+    );
+    final cardId = state.creditCards.single.id;
+    final transactionId = state.addTransaction(
+      title: 'Super',
+      amount: 1000,
+      categoryTitle: 'Comida',
+      type: TransactionType.expense,
+      date: DateTime(2026, 7, 10),
+      creditCardId: cardId,
+      cardTransactionKind: CardTransactionKind.purchase,
+    )!;
+
+    final updated = state.updateTransaction(
+      transactionId,
+      title: 'Super',
+      amount: 1000,
+      categoryTitle: 'Comida',
+      type: TransactionType.expense,
+      date: DateTime(2026, 7, 10),
+    );
+
+    expect(updated, isTrue);
+    expect(state.creditCards.single.usedBalance, 1000);
+  });
+
+  test('linking an existing expense to a card increments used balance', () {
+    final state = FinanceState();
+    state.addCategory('Comida', 1000, Colors.green);
+    state.addCreditCard(
+      name: 'Tarjeta',
+      creditLimit: 10000,
+      usedBalance: 1000,
+      statementCutDay: 10,
+    );
+    final cardId = state.creditCards.single.id;
+    final transactionId = state.addTransaction(
+      title: 'Super',
+      amount: 1000,
+      categoryTitle: 'Comida',
+      type: TransactionType.expense,
+      date: DateTime(2026, 7, 10),
+    )!;
+
+    final updated = state.updateTransaction(
+      transactionId,
+      title: 'Super',
+      amount: 1000,
+      categoryTitle: 'Comida',
+      type: TransactionType.expense,
+      date: DateTime(2026, 7, 10),
+      creditCardId: cardId,
+      cardTransactionKind: CardTransactionKind.purchase,
+    );
+
+    expect(updated, isTrue);
+    expect(state.creditCards.single.usedBalance, 2000);
+  });
+
+  test('deleting linked purchase and payment reverts used balance once', () {
+    final state = FinanceState();
+    state.addCategory('Comida', 1000, Colors.green);
+    state.addCreditCard(
+      name: 'Tarjeta',
+      creditLimit: 10000,
+      usedBalance: 1000,
+      statementCutDay: 10,
+    );
+    final cardId = state.creditCards.single.id;
+    final purchaseId = state.addTransaction(
+      title: 'Super',
+      amount: 1000,
+      categoryTitle: 'Comida',
+      type: TransactionType.expense,
+      date: DateTime(2026, 7, 10),
+      creditCardId: cardId,
+      cardTransactionKind: CardTransactionKind.purchase,
+    )!;
+    final paymentId = state.registerCreditCardPayment(
+      cardId: cardId,
+      amount: 300,
+      date: DateTime(2026, 7, 11),
+    )!;
+
+    expect(state.creditCards.single.usedBalance, 1700);
+    expect(state.deleteTransaction(purchaseId), isTrue);
+    expect(state.creditCards.single.usedBalance, 700);
+    expect(state.deleteTransaction(paymentId), isTrue);
+    expect(state.creditCards.single.usedBalance, 1000);
+  });
+
+  test('changing title or date of linked movement does not modify balance', () {
+    final state = FinanceState();
+    state.addCategory('Comida', 1000, Colors.green);
+    state.addCreditCard(
+      name: 'Tarjeta',
+      creditLimit: 10000,
+      usedBalance: 1000,
+      statementCutDay: 10,
+    );
+    final cardId = state.creditCards.single.id;
+    final transactionId = state.addTransaction(
+      title: 'Super',
+      amount: 500,
+      categoryTitle: 'Comida',
+      type: TransactionType.expense,
+      date: DateTime(2026, 7, 10),
+      creditCardId: cardId,
+      cardTransactionKind: CardTransactionKind.purchase,
+    )!;
+
+    final updated = state.updateTransaction(
+      transactionId,
+      title: 'Super mercado',
+      amount: 500,
+      categoryTitle: 'Comida',
+      type: TransactionType.expense,
+      date: DateTime(2026, 7, 11),
+      creditCardId: cardId,
+      cardTransactionKind: CardTransactionKind.purchase,
+    );
+
+    expect(updated, isTrue);
+    expect(state.creditCards.single.usedBalance, 1500);
+  });
+
+  test('movement balance sync does not modify manual or confirmed card payment',
+      () {
+    final state = FinanceState();
+    state.addCategory('Comida', 1000, Colors.green);
+    state.addCreditCard(
+      name: 'Tarjeta',
+      creditLimit: 10000,
+      usedBalance: 1000,
+      statementCutDay: 10,
+      paymentAmount: 5000,
+      paymentConfirmed: true,
+    );
+    final cardId = state.creditCards.single.id;
+
+    state.addTransaction(
+      title: 'Super',
+      amount: 500,
+      categoryTitle: 'Comida',
+      type: TransactionType.expense,
+      date: DateTime(2026, 7, 10),
+      creditCardId: cardId,
+      cardTransactionKind: CardTransactionKind.purchase,
+    );
+
+    expect(state.creditCards.single.usedBalance, 1500);
+    expect(state.cardMonthlyPaymentAmount(cardId), 5000);
+    expect(
+      state.cardMonthlyPaymentSource(cardId),
+      CreditCardPaymentSource.confirmed,
+    );
+  });
+
+  test('registering payment from cards creates exactly one linked movement',
+      () {
+    final state = FinanceState();
+    state.addCreditCard(
+      name: 'Tarjeta',
+      creditLimit: 10000,
+      usedBalance: 1000,
+      statementCutDay: 10,
+    );
+    final cardId = state.creditCards.single.id;
+
+    final transactionId = state.registerCreditCardPayment(
+      cardId: cardId,
+      amount: 300,
+      date: DateTime(2026, 7, 10),
+    );
+
+    expect(transactionId, isNotNull);
+    expect(state.transactions, hasLength(1));
+    expect(state.transactions.single.creditCardId, cardId);
+    expect(state.creditCards.single.usedBalance, 700);
+  });
+
+  test('cannot associate a movement with a non-existent card', () {
+    final state = FinanceState();
+    state.addCategory('Comida', 1000, Colors.green);
+
+    final transactionId = state.addTransaction(
+      title: 'Super',
+      amount: 200,
+      categoryTitle: 'Comida',
+      type: TransactionType.expense,
+      date: DateTime(2026, 7, 10),
+      creditCardId: 'missing-card',
+      cardTransactionKind: CardTransactionKind.purchase,
+    );
+
+    expect(transactionId, isNull);
+    expect(state.transactions, isEmpty);
+  });
+
+  test('cannot delete a card with linked movements', () {
+    final state = FinanceState();
+    state.addCategory('Comida', 1000, Colors.green);
+    state.addCreditCard(
+      name: 'Tarjeta',
+      creditLimit: 10000,
+      usedBalance: 1000,
+      statementCutDay: 10,
+    );
+    final cardId = state.creditCards.single.id;
+    state.addTransaction(
+      title: 'Super',
+      amount: 200,
+      categoryTitle: 'Comida',
+      type: TransactionType.expense,
+      date: DateTime(2026, 7, 10),
+      creditCardId: cardId,
+      cardTransactionKind: CardTransactionKind.purchase,
+    );
+
+    expect(state.deleteCreditCard(cardId), isFalse);
+    expect(state.creditCards, hasLength(1));
+  });
+
+  test('legacy movements without relation do not modify cards on load',
+      () async {
+    final snapshot = FinanceSnapshot(
+      monthlyIncome: 0,
+      categories: const [
+        BudgetCategory(
+          id: BudgetCategory.antExpenseId,
+          title: BudgetCategory.antExpenseTitle,
+          limit: 0,
+          color: Color(0xFF1B7F5C),
+        ),
+      ],
+      transactions: [
+        TransactionEntry(
+          id: 'tx-1',
+          title: 'Legacy expense',
+          amount: 400,
+          category: 'Comida',
+          date: DateTime(2026, 7, 10),
+          type: TransactionType.expense,
+        ),
+      ],
+      plannedExpenses: const [],
+      creditCards: const [
+        CreditCard(
+          id: 'card-1',
+          name: 'Tarjeta',
+          creditLimit: 10000,
+          usedBalance: 1234,
+          statementCutDay: 10,
+        ),
+      ],
+      creditCardPurchases: const [],
+      subscriptions: const [],
+      cardMonthlyPayments: const [],
+      monthlyExtras: const [],
+      surplusPlan: const SurplusPlan(type: SurplusPlanType.unconfigured),
+      manualTasks: const [],
+      taskOverrides: const {},
+      tandas: const [],
+      tandaContributions: const [],
+      tandaReceipts: const [],
+    );
+    final state = FinanceState(
+      repository: _MemoryRepository(snapshot),
+    );
+
+    await state.initialize();
+
+    expect(state.creditCards.single.usedBalance, 1234);
+  });
+}
+
+class _MemoryRepository implements FinanceStorage {
+  _MemoryRepository(this.snapshot);
+
+  final FinanceSnapshot snapshot;
+
+  @override
+  Future<FinanceSnapshot> loadSnapshot() async => snapshot;
+
+  @override
+  Future<void> saveSnapshot(FinanceSnapshot snapshot) async {}
 }

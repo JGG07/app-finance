@@ -10,9 +10,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'helpers/fake_task_notification_scheduler.dart';
 
 void main() {
-  test('migrates schema 4 to 5 by adding only task reminders', () async {
+  test('migrates schema 5 to 6 by adding card transaction columns', () async {
     final directory =
-        await Directory.systemTemp.createTemp('notifications_v4_');
+        await Directory.systemTemp.createTemp('notifications_v5_');
     final file = File('${directory.path}/migration.sqlite');
     AppDatabase? database;
     try {
@@ -25,18 +25,24 @@ void main() {
               'CREATE TABLE legacy_marker (id TEXT NOT NULL PRIMARY KEY)',
             );
             sqlite.execute("INSERT INTO legacy_marker VALUES ('kept')");
-            sqlite.userVersion = 4;
+            sqlite.userVersion = 5;
           },
         ),
       );
-      expect(await database.select(database.taskReminders).get(), isEmpty);
+      final tableInfo = await database
+          .customSelect("PRAGMA table_info('transactions')")
+          .get();
       final marker = await database
           .customSelect(
             'SELECT id FROM legacy_marker',
           )
           .getSingle();
+      final columnNames =
+          tableInfo.map((row) => row.read<String>('name')).toSet();
+      expect(columnNames, contains('credit_card_id'));
+      expect(columnNames, contains('card_transaction_kind'));
       expect(marker.read<String>('id'), 'kept');
-      expect(database.schemaVersion, 5);
+      expect(database.schemaVersion, 6);
     } finally {
       await database?.close();
       await directory.delete(recursive: true);

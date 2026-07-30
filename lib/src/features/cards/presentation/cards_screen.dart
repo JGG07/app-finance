@@ -4,13 +4,67 @@ import '../../../core/state/finance_state.dart';
 import '../../../core/state/finance_state_provider.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../shared/presentation/app_design.dart';
+import '../../notifications/domain/task_reminder.dart';
 import '../../subscriptions/domain/subscription_entry.dart';
 import 'card_monthly_payment_section.dart';
 import '../domain/credit_card.dart';
 import '../domain/credit_card_purchase.dart';
 
-class CardsScreen extends StatelessWidget {
-  const CardsScreen({super.key});
+class CardsScreen extends StatefulWidget {
+  const CardsScreen({
+    this.pendingPaymentCardId,
+    this.onPendingPaymentHandled,
+    super.key,
+  });
+
+  final String? pendingPaymentCardId;
+  final VoidCallback? onPendingPaymentHandled;
+
+  @override
+  State<CardsScreen> createState() => _CardsScreenState();
+}
+
+class _CardsScreenState extends State<CardsScreen> {
+  String? _lastHandledPendingPaymentCardId;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _maybeHandlePendingPayment();
+  }
+
+  @override
+  void didUpdateWidget(covariant CardsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _maybeHandlePendingPayment();
+  }
+
+  void _maybeHandlePendingPayment() {
+    final pendingCardId = widget.pendingPaymentCardId;
+    if (pendingCardId == null ||
+        pendingCardId == _lastHandledPendingPaymentCardId) {
+      return;
+    }
+
+    final state = FinanceStateProvider.of(context);
+    final card = state.creditCardById(pendingCardId);
+    if (card == null) {
+      _lastHandledPendingPaymentCardId = pendingCardId;
+      widget.onPendingPaymentHandled?.call();
+      return;
+    }
+
+    _lastHandledPendingPaymentCardId = pendingCardId;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await showCardMonthlyPaymentDialog(
+        context,
+        state: state,
+        card: card,
+      );
+      widget.onPendingPaymentHandled?.call();
+    });
+  }
 
   void _showCreditCardDialog(
     BuildContext context,
@@ -28,111 +82,270 @@ class CardsScreen extends StatelessWidget {
       text: card?.statementCutDay.toString() ?? '',
     );
     final formKey = GlobalKey<FormState>();
+    final paymentController = TextEditingController();
+    var paymentConfirmed = false;
+    var remindAfterCut = false;
+    var reminderMode = TaskReminderMode.sameDay;
+    DateTime? reminderCustomScheduledAt;
 
     showDialog<void>(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: Text(card == null ? 'Nueva tarjeta' : 'Editar tarjeta'),
-          content: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: nameController,
-                  autofocus: card == null,
-                  decoration: const InputDecoration(
-                    labelText: 'Nombre de la tarjeta',
-                    hintText: 'Ej. Tarjeta principal',
-                    border: OutlineInputBorder(),
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            Future<void> pickCustomReminderDate() async {
+              final initialDate = reminderCustomScheduledAt ??
+                  DateTime.now().add(const Duration(days: 1));
+              final date = await showDatePicker(
+                context: context,
+                initialDate: initialDate,
+                firstDate: DateTime(2020),
+                lastDate: DateTime(2100),
+              );
+              if (date == null || !context.mounted) {
+                return;
+              }
+              final time = await showTimePicker(
+                context: context,
+                initialTime: TimeOfDay.fromDateTime(initialDate),
+              );
+              if (time == null) {
+                return;
+              }
+              setDialogState(() {
+                reminderCustomScheduledAt = DateTime(
+                  date.year,
+                  date.month,
+                  date.day,
+                  time.hour,
+                  time.minute,
+                );
+              });
+            }
+
+            final hasPayment = paymentController.text.trim().isNotEmpty;
+
+            return AlertDialog(
+              title: Text(card == null ? 'Nueva tarjeta' : 'Editar tarjeta'),
+              content: SingleChildScrollView(
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        controller: nameController,
+                        autofocus: card == null,
+                        decoration: const InputDecoration(
+                          labelText: 'Nombre de la tarjeta',
+                          hintText: 'Ej. Tarjeta principal',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Ingresa un nombre';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: limitController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: const InputDecoration(
+                          labelText: 'Limite de credito',
+                          prefixText: r'$ ',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: _validatePositiveAmount,
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: balanceController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: const InputDecoration(
+                          labelText: 'Saldo usado actual',
+                          prefixText: r'$ ',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: _validateZeroOrPositiveAmount,
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: cutDayController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Dia de corte',
+                          helperText: 'Ej. 19 para cortar los dias 19',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: _validateStatementCutDay,
+                      ),
+                      if (card == null) ...[
+                        const SizedBox(height: 16),
+                        ExpansionTile(
+                          tilePadding: EdgeInsets.zero,
+                          childrenPadding: EdgeInsets.zero,
+                          title: const Text('Datos del estado de cuenta'),
+                          subtitle: const Text(
+                            'Opcional: captura el pago si ya lo conoces.',
+                          ),
+                          children: [
+                            TextFormField(
+                              controller: paymentController,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                decimal: true,
+                              ),
+                              onChanged: (_) => setDialogState(() {}),
+                              decoration: const InputDecoration(
+                                labelText: 'Pago para no generar intereses',
+                                helperText:
+                                    'Si lo capturas, debe ser el total completo del estado de cuenta.',
+                                prefixText: r'$ ',
+                                border: OutlineInputBorder(),
+                              ),
+                              validator: (value) {
+                                if ((value ?? '').trim().isEmpty) {
+                                  return null;
+                                }
+                                return _validateZeroOrPositiveAmount(value);
+                              },
+                            ),
+                            CheckboxListTile(
+                              contentPadding: EdgeInsets.zero,
+                              value: hasPayment && paymentConfirmed,
+                              onChanged: hasPayment
+                                  ? (value) {
+                                      setDialogState(() {
+                                        paymentConfirmed = value ?? false;
+                                      });
+                                    }
+                                  : null,
+                              title: const Text(
+                                'Confirmar que el monto corresponde al estado de cuenta',
+                              ),
+                            ),
+                            if (!hasPayment) ...[
+                              CheckboxListTile(
+                                contentPadding: EdgeInsets.zero,
+                                value: remindAfterCut,
+                                onChanged: (value) {
+                                  setDialogState(() {
+                                    remindAfterCut = value ?? false;
+                                  });
+                                },
+                                title: const Text(
+                                  'Recordarme agregarlo despues del corte',
+                                ),
+                              ),
+                              if (remindAfterCut) ...[
+                                const SizedBox(height: 8),
+                                DropdownButtonFormField<TaskReminderMode>(
+                                  initialValue: reminderMode,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Tipo de recordatorio',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  items: TaskReminderMode.values.map((mode) {
+                                    return DropdownMenuItem(
+                                      value: mode,
+                                      child: Text(
+                                        _reminderModeLabel(mode),
+                                      ),
+                                    );
+                                  }).toList(),
+                                  onChanged: (value) {
+                                    if (value == null) return;
+                                    setDialogState(() {
+                                      reminderMode = value;
+                                      if (value != TaskReminderMode.custom) {
+                                        reminderCustomScheduledAt = null;
+                                      }
+                                    });
+                                  },
+                                ),
+                                if (reminderMode ==
+                                    TaskReminderMode.custom) ...[
+                                  const SizedBox(height: 8),
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: OutlinedButton.icon(
+                                      onPressed: pickCustomReminderDate,
+                                      icon: const Icon(Icons.event_outlined),
+                                      label: Text(
+                                        reminderCustomScheduledAt == null
+                                            ? 'Elegir fecha personalizada'
+                                            : _formatDateTime(
+                                                reminderCustomScheduledAt!,
+                                              ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ],
+                          ],
+                        ),
+                      ],
+                    ],
                   ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Ingresa un nombre';
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancelar'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    if (formKey.currentState?.validate() ?? false) {
+                      final name = nameController.text.trim();
+                      final creditLimit =
+                          double.parse(limitController.text.trim());
+                      final usedBalance = double.parse(
+                        balanceController.text.trim(),
+                      );
+                      final statementCutDay = int.parse(
+                        cutDayController.text.trim(),
+                      );
+                      final paymentAmount = hasPayment
+                          ? double.parse(paymentController.text.trim())
+                          : null;
+
+                      if (card == null) {
+                        state.addCreditCard(
+                          name: name,
+                          creditLimit: creditLimit,
+                          usedBalance: usedBalance,
+                          statementCutDay: statementCutDay,
+                          paymentAmount: paymentAmount,
+                          paymentConfirmed: paymentConfirmed,
+                          remindAfterCut: remindAfterCut,
+                          reminderMode: reminderMode,
+                          reminderCustomScheduledAt: reminderCustomScheduledAt,
+                        );
+                      } else {
+                        state.updateCreditCard(
+                          card.id,
+                          name: name,
+                          creditLimit: creditLimit,
+                          usedBalance: usedBalance,
+                          statementCutDay: statementCutDay,
+                        );
+                      }
+                      Navigator.of(context).pop();
                     }
-                    return null;
                   },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: limitController,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  decoration: const InputDecoration(
-                    labelText: 'Limite de credito',
-                    prefixText: r'$ ',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: _validatePositiveAmount,
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: balanceController,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  decoration: const InputDecoration(
-                    labelText: 'Saldo usado actual',
-                    prefixText: r'$ ',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: _validateZeroOrPositiveAmount,
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: cutDayController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Dia de corte',
-                    helperText: 'Ej. 19 para cortar los dias 19',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: _validateStatementCutDay,
+                  child: Text(card == null ? 'Agregar' : 'Guardar'),
                 ),
               ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancelar'),
-            ),
-            FilledButton(
-              onPressed: () {
-                if (formKey.currentState?.validate() ?? false) {
-                  final name = nameController.text.trim();
-                  final creditLimit = double.parse(limitController.text.trim());
-                  final usedBalance = double.parse(
-                    balanceController.text.trim(),
-                  );
-                  final statementCutDay = int.parse(
-                    cutDayController.text.trim(),
-                  );
-
-                  if (card == null) {
-                    state.addCreditCard(
-                      name: name,
-                      creditLimit: creditLimit,
-                      usedBalance: usedBalance,
-                      statementCutDay: statementCutDay,
-                    );
-                  } else {
-                    state.updateCreditCard(
-                      card.id,
-                      name: name,
-                      creditLimit: creditLimit,
-                      usedBalance: usedBalance,
-                      statementCutDay: statementCutDay,
-                    );
-                  }
-                  Navigator.of(context).pop();
-                }
-              },
-              child: Text(card == null ? 'Agregar' : 'Guardar'),
-            ),
-          ],
+            );
+          },
         );
       },
     );
@@ -145,52 +358,108 @@ class CardsScreen extends StatelessWidget {
   ) {
     final amountController = TextEditingController();
     final formKey = GlobalKey<FormState>();
+    var selectedDate = DateTime.now();
 
     showDialog<void>(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: Text('Pago a ${card.name}'),
-          content: Form(
-            key: formKey,
-            child: TextFormField(
-              controller: amountController,
-              autofocus: true,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              decoration: const InputDecoration(
-                labelText: 'Monto pagado',
-                prefixText: r'$ ',
-                border: OutlineInputBorder(),
-              ),
-              validator: _validatePositiveAmount,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancelar'),
-            ),
-            FilledButton(
-              onPressed: () {
-                if (formKey.currentState?.validate() ?? false) {
-                  final amount = double.parse(amountController.text.trim());
-                  state.addCreditCardPayment(card.id, amount);
-                  Navigator.of(context).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Se libero ${CurrencyFormatter.format(amount)} en ${card.name}',
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text('Pago a ${card.name}'),
+              content: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      controller: amountController,
+                      autofocus: true,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
                       ),
-                      behavior: SnackBarBehavior.floating,
+                      decoration: const InputDecoration(
+                        labelText: 'Monto pagado',
+                        prefixText: r'$ ',
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (value) {
+                        final validation = _validatePositiveAmount(value);
+                        if (validation != null) {
+                          return validation;
+                        }
+                        final amount = double.tryParse(value?.trim() ?? '');
+                        if (amount != null && amount > card.usedBalance) {
+                          return 'El pago no puede ser mayor al saldo usado actual.';
+                        }
+                        return null;
+                      },
                     ),
-                  );
-                }
-              },
-              child: const Text('Registrar pago'),
-            ),
-          ],
+                    const SizedBox(height: 12),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.calendar_today_outlined),
+                      title: const Text('Fecha'),
+                      subtitle: Text(_formatDate(selectedDate)),
+                      trailing: TextButton(
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: selectedDate,
+                            firstDate: DateTime(2025),
+                            lastDate: DateTime(2035),
+                          );
+                          if (picked != null) {
+                            setDialogState(() => selectedDate = picked);
+                          }
+                        },
+                        child: const Text('Cambiar'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancelar'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    if (formKey.currentState?.validate() ?? false) {
+                      final amount = double.parse(amountController.text.trim());
+                      final transactionId = state.registerCreditCardPayment(
+                        cardId: card.id,
+                        amount: amount,
+                        date: selectedDate,
+                      );
+                      if (transactionId == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'No se pudo registrar el pago. Verifica el monto y la tarjeta.',
+                            ),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                        return;
+                      }
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Se registro ${CurrencyFormatter.format(amount)} en ${card.name}.',
+                          ),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    }
+                  },
+                  child: const Text('Registrar pago'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -1104,6 +1373,21 @@ class CardsScreen extends StatelessWidget {
     }
 
     return '${date.day}/${date.month}/${date.year}';
+  }
+
+  static String _formatDateTime(DateTime value) {
+    return '${_formatDate(value)} '
+        '${value.hour.toString().padLeft(2, '0')}:'
+        '${value.minute.toString().padLeft(2, '0')}';
+  }
+
+  static String _reminderModeLabel(TaskReminderMode mode) {
+    return switch (mode) {
+      TaskReminderMode.sameDay => 'El mismo dia',
+      TaskReminderMode.oneDayBefore => '1 dia antes',
+      TaskReminderMode.threeDaysBefore => '3 dias antes',
+      TaskReminderMode.custom => 'Personalizado',
+    };
   }
 
   static String? _validateStatementCutDay(String? value) {
