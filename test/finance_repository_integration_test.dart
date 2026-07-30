@@ -362,6 +362,60 @@ void main() {
     }
   });
 
+  test(
+      'migrates version 5 to 6 when one card transaction column already exists',
+      () async {
+    final tempDirectory = await Directory.systemTemp.createTemp(
+      'app_finance_migration_v5_partial_test_',
+    );
+    final databaseFile = File('${tempDirectory.path}/migration.sqlite');
+    AppDatabase? database;
+
+    try {
+      database = AppDatabase.forTesting(
+        NativeDatabase(
+          databaseFile,
+          setup: (sqlite) {
+            if (sqlite.userVersion != 0) return;
+            sqlite.execute('''
+              CREATE TABLE transactions (
+                id TEXT NOT NULL PRIMARY KEY,
+                title TEXT NOT NULL,
+                amount REAL NOT NULL,
+                category TEXT NOT NULL,
+                date INTEGER NOT NULL,
+                type TEXT NOT NULL,
+                credit_card_id TEXT NULL
+              )
+            ''');
+            sqlite.execute('''
+              INSERT INTO transactions VALUES (
+                'legacy-tx', 'Super', 250, 'Comida', 1783641600, 'expense', NULL
+              )
+            ''');
+            sqlite.userVersion = 5;
+          },
+        ),
+      );
+
+      final tableInfo = await database
+          .customSelect("PRAGMA table_info('transactions')")
+          .get();
+      final columnNames =
+          tableInfo.map((row) => row.read<String>('name')).toSet();
+      final rows = await database.select(database.transactions).get();
+
+      expect(database.schemaVersion, 6);
+      expect(columnNames, contains('credit_card_id'));
+      expect(columnNames, contains('card_transaction_kind'));
+      expect(rows.single.creditCardId, isNull);
+      expect(rows.single.cardTransactionKind, isNull);
+    } finally {
+      await database?.close();
+      await tempDirectory.delete(recursive: true);
+    }
+  });
+
   test('stores and reloads linked purchase and payment transactions', () async {
     final tempDirectory = await Directory.systemTemp.createTemp(
       'app_finance_card_tx_repository_test_',

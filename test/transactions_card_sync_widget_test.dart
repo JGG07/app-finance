@@ -12,7 +12,7 @@ import 'helpers/test_app.dart';
 Finder _categoryFieldFinder() {
   return find.byWidgetPredicate((widget) {
     return widget is DropdownButtonFormField<String> &&
-        widget.decoration?.labelText == 'Seccion / categoria';
+        widget.decoration.labelText == 'Seccion / categoria';
   });
 }
 

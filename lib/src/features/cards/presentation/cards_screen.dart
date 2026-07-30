@@ -124,6 +124,8 @@ class _CardsScreenState extends State<CardsScreen> {
             }
 
             final hasPayment = paymentController.text.trim().isNotEmpty;
+            final canEditUsedBalance =
+                card == null || !state.hasLinkedTransactionsForCard(card.id);
 
             return AlertDialog(
               title: Text(card == null ? 'Nueva tarjeta' : 'Editar tarjeta'),
@@ -164,13 +166,17 @@ class _CardsScreenState extends State<CardsScreen> {
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: balanceController,
+                        enabled: canEditUsedBalance,
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
                         ),
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Saldo usado actual',
                           prefixText: r'$ ',
-                          border: OutlineInputBorder(),
+                          helperText: canEditUsedBalance
+                              ? null
+                              : 'No se puede editar manualmente mientras la tarjeta tenga movimientos asociados.',
+                          border: const OutlineInputBorder(),
                         ),
                         validator: _validateZeroOrPositiveAmount,
                       ),
@@ -337,6 +343,17 @@ class _CardsScreenState extends State<CardsScreen> {
                           usedBalance: usedBalance,
                           statementCutDay: statementCutDay,
                         );
+                        if (!canEditUsedBalance &&
+                            usedBalance != card.usedBalance) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'El saldo usado se sincroniza desde Movimientos y no puede editarse manualmente mientras existan movimientos asociados.',
+                              ),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
                       }
                       Navigator.of(context).pop();
                     }

@@ -129,11 +129,23 @@ class AppDatabase extends _$AppDatabase {
             if (transactionsTableExists == null) {
               await migrator.createTable(transactions);
             } else {
-              await migrator.addColumn(transactions, transactions.creditCardId);
-              await migrator.addColumn(
-                transactions,
-                transactions.cardTransactionKind,
-              );
+              final transactionColumns = (await customSelect(
+                "PRAGMA table_info('transactions')",
+              ).get())
+                  .map((row) => row.read<String>('name'))
+                  .toSet();
+              if (!transactionColumns.contains('credit_card_id')) {
+                await migrator.addColumn(
+                  transactions,
+                  transactions.creditCardId,
+                );
+              }
+              if (!transactionColumns.contains('card_transaction_kind')) {
+                await migrator.addColumn(
+                  transactions,
+                  transactions.cardTransactionKind,
+                );
+              }
             }
           }
         },

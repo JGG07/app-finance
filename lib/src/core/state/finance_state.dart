@@ -1830,10 +1830,14 @@ class FinanceState extends ChangeNotifier {
       return;
     }
 
-    _creditCards[index] = _creditCards[index].copyWith(
+    final current = _creditCards[index];
+    final canUpdateUsedBalance =
+        !hasLinkedTransactionsForCard(id) || usedBalance == current.usedBalance;
+
+    _creditCards[index] = current.copyWith(
       name: name,
       creditLimit: creditLimit,
-      usedBalance: usedBalance,
+      usedBalance: canUpdateUsedBalance ? usedBalance : current.usedBalance,
       statementCutDay: statementCutDay,
     );
     _persistAndNotify();
@@ -2301,21 +2305,54 @@ class FinanceState extends ChangeNotifier {
     );
   }
 
+  bool _hasConsistentCardTransactionLink(
+    TransactionEntry transaction, {
+    List<CreditCard>? cards,
+  }) {
+    final cardId = transaction.creditCardId;
+    final kind = transaction.cardTransactionKind;
+    if (cardId == null || kind == null) {
+      return false;
+    }
+    if (kind == CardTransactionKind.purchase &&
+        transaction.type != TransactionType.expense) {
+      return false;
+    }
+    if (kind == CardTransactionKind.payment &&
+        transaction.type != TransactionType.cardPayment) {
+      return false;
+    }
+    final targetCards = cards ?? _creditCards;
+    return targetCards.any((card) => card.id == cardId);
+  }
+
+  TransactionEntry _sanitizeTransactionCardLink(
+    TransactionEntry transaction,
+    List<CreditCard> cards,
+  ) {
+    final hasAnyCardLink = transaction.creditCardId != null ||
+        transaction.cardTransactionKind != null;
+    if (!hasAnyCardLink ||
+        _hasConsistentCardTransactionLink(transaction, cards: cards)) {
+      return transaction;
+    }
+    return transaction.copyWith(
+      clearCreditCardId: true,
+      clearCardTransactionKind: true,
+    );
+  }
+
   bool _applyTransactionCardEffect(
     List<CreditCard> cards,
     TransactionEntry transaction,
   ) {
-    final cardId = transaction.creditCardId;
-    final kind = transaction.cardTransactionKind;
-    if (cardId == null || kind == null) {
+    if (!_hasConsistentCardTransactionLink(transaction, cards: cards)) {
       return true;
     }
+    final cardId = transaction.creditCardId!;
+    final kind = transaction.cardTransactionKind!;
 
     final cardIndex = cards.indexWhere((card) => card.id == cardId);
-    if (cardIndex == -1) {
-      return false;
-    }
-
     final card = cards[cardIndex];
     final delta = kind == CardTransactionKind.purchase
         ? transaction.amount
@@ -2333,17 +2370,13 @@ class FinanceState extends ChangeNotifier {
     List<CreditCard> cards,
     TransactionEntry transaction,
   ) {
-    final cardId = transaction.creditCardId;
-    final kind = transaction.cardTransactionKind;
-    if (cardId == null || kind == null) {
+    if (!_hasConsistentCardTransactionLink(transaction, cards: cards)) {
       return true;
     }
+    final cardId = transaction.creditCardId!;
+    final kind = transaction.cardTransactionKind!;
 
     final cardIndex = cards.indexWhere((card) => card.id == cardId);
-    if (cardIndex == -1) {
-      return false;
-    }
-
     final card = cards[cardIndex];
     final delta = kind == CardTransactionKind.purchase
         ? -transaction.amount
@@ -2496,9 +2529,16 @@ class FinanceState extends ChangeNotifier {
     _monthlyIncome = snapshot.monthlyIncome;
     _categories = List.of(snapshot.categories);
     _ensureAntExpenseCategory();
-    _transactions = List.of(snapshot.transactions);
-    _plannedExpenses = List.of(snapshot.plannedExpenses);
     _creditCards = List.of(snapshot.creditCards);
+    _transactions = snapshot.transactions
+        .map(
+          (transaction) => _sanitizeTransactionCardLink(
+            transaction,
+            _creditCards,
+          ),
+        )
+        .toList(growable: true);
+    _plannedExpenses = List.of(snapshot.plannedExpenses);
     _creditCardPurchases = List.of(snapshot.creditCardPurchases);
     _subscriptions = List.of(snapshot.subscriptions);
     _cardMonthlyPayments = List.of(snapshot.cardMonthlyPayments);

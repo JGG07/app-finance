@@ -1068,6 +1068,37 @@ void main() {
     expect(state.creditCards.single.usedBalance, 1700);
   });
 
+  test('invalid card payment edit does not mutate state partially', () {
+    final state = FinanceState();
+    state.addCreditCard(
+      name: 'Tarjeta',
+      creditLimit: 10000,
+      usedBalance: 500,
+      statementCutDay: 10,
+    );
+    final cardId = state.creditCards.single.id;
+    final transactionId = state.registerCreditCardPayment(
+      cardId: cardId,
+      amount: 500,
+      date: DateTime(2026, 7, 10),
+    )!;
+
+    final updated = state.updateTransaction(
+      transactionId,
+      title: 'Pago a Tarjeta',
+      amount: 700,
+      categoryTitle: FinanceState.cardPaymentCategoryTitle,
+      type: TransactionType.cardPayment,
+      date: DateTime(2026, 7, 10),
+      creditCardId: cardId,
+      cardTransactionKind: CardTransactionKind.payment,
+    );
+
+    expect(updated, isFalse);
+    expect(state.creditCards.single.usedBalance, 0);
+    expect(state.transactions.single.amount, 500);
+  });
+
   test('moving a card purchase from card A to B reverts and reapplies', () {
     final state = FinanceState();
     state.addCategory('Comida', 1000, Colors.green);
@@ -1341,6 +1372,36 @@ void main() {
     expect(state.creditCards, hasLength(1));
   });
 
+  test('editing a linked card does not allow manual used balance changes', () {
+    final state = FinanceState();
+    state.addCategory('Comida', 1000, Colors.green);
+    state.addCreditCard(
+      name: 'Tarjeta',
+      creditLimit: 10000,
+      usedBalance: 1000,
+      statementCutDay: 10,
+    );
+    final cardId = state.creditCards.single.id;
+    state.addTransaction(
+      title: 'Super',
+      amount: 200,
+      categoryTitle: 'Comida',
+      type: TransactionType.expense,
+      date: DateTime(2026, 7, 10),
+      creditCardId: cardId,
+      cardTransactionKind: CardTransactionKind.purchase,
+    );
+
+    state.updateCreditCard(
+      cardId,
+      usedBalance: 200,
+      creditLimit: 15000,
+    );
+
+    expect(state.creditCards.single.usedBalance, 1200);
+    expect(state.creditCards.single.creditLimit, 15000);
+  });
+
   test('legacy movements without relation do not modify cards on load',
       () async {
     final snapshot = FinanceSnapshot(
@@ -1391,6 +1452,91 @@ void main() {
     await state.initialize();
 
     expect(state.creditCards.single.usedBalance, 1234);
+  });
+
+  test('loading a linked movement with a missing card clears its card link',
+      () async {
+    final snapshot = FinanceSnapshot(
+      monthlyIncome: 0,
+      categories: const [],
+      transactions: [
+        TransactionEntry(
+          id: 'tx-1',
+          title: 'Compra huerfana',
+          amount: 400,
+          category: 'Comida',
+          date: DateTime(2026, 7, 10),
+          type: TransactionType.expense,
+          creditCardId: 'missing-card',
+          cardTransactionKind: CardTransactionKind.purchase,
+        ),
+      ],
+      plannedExpenses: const [],
+      creditCards: const [],
+      creditCardPurchases: const [],
+      subscriptions: const [],
+      cardMonthlyPayments: const [],
+      monthlyExtras: const [],
+      surplusPlan: const SurplusPlan(type: SurplusPlanType.unconfigured),
+      manualTasks: const [],
+      taskOverrides: const {},
+      tandas: const [],
+      tandaContributions: const [],
+      tandaReceipts: const [],
+    );
+    final state = FinanceState(repository: _MemoryRepository(snapshot));
+
+    await state.initialize();
+
+    expect(state.transactions.single.creditCardId, isNull);
+    expect(state.transactions.single.cardTransactionKind, isNull);
+  });
+
+  test('loading an invalid type-kind combination clears its card link',
+      () async {
+    final snapshot = FinanceSnapshot(
+      monthlyIncome: 0,
+      categories: const [],
+      transactions: [
+        TransactionEntry(
+          id: 'tx-1',
+          title: 'Pago corrupto',
+          amount: 400,
+          category: FinanceState.cardPaymentCategoryTitle,
+          date: DateTime(2026, 7, 10),
+          type: TransactionType.cardPayment,
+          creditCardId: 'card-1',
+          cardTransactionKind: CardTransactionKind.purchase,
+        ),
+      ],
+      plannedExpenses: const [],
+      creditCards: const [
+        CreditCard(
+          id: 'card-1',
+          name: 'Tarjeta',
+          creditLimit: 10000,
+          usedBalance: 500,
+          statementCutDay: 10,
+        ),
+      ],
+      creditCardPurchases: const [],
+      subscriptions: const [],
+      cardMonthlyPayments: const [],
+      monthlyExtras: const [],
+      surplusPlan: const SurplusPlan(type: SurplusPlanType.unconfigured),
+      manualTasks: const [],
+      taskOverrides: const {},
+      tandas: const [],
+      tandaContributions: const [],
+      tandaReceipts: const [],
+    );
+    final state = FinanceState(repository: _MemoryRepository(snapshot));
+
+    await state.initialize();
+
+    expect(state.transactions.single.creditCardId, isNull);
+    expect(state.transactions.single.cardTransactionKind, isNull);
+    expect(state.creditCards.single.usedBalance, 500);
   });
 }
 

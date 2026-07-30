@@ -840,8 +840,18 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             ),
             TextButton(
               onPressed: () {
-                state.deleteTransaction(transaction.id);
+                final deleted = state.deleteTransaction(transaction.id);
                 Navigator.of(context).pop();
+                if (!deleted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'No se pudo eliminar el movimiento porque la relacion con la tarjeta es inconsistente.',
+                      ),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
               },
               child: const Text('Eliminar'),
             ),
