@@ -7,6 +7,9 @@ import '../../../shared/presentation/app_design.dart';
 import '../../notifications/domain/task_reminder.dart';
 import '../../notifications/services/task_notification_scheduler.dart';
 
+const _appVersionLabel = 'Version 0.1.0+1';
+const _appBuildLabel = 'Build cf6f8e2';
+
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
@@ -67,6 +70,8 @@ class SettingsScreen extends StatelessWidget {
           status: 'Pendiente',
           color: AppColors.pending,
         ),
+        const SizedBox(height: AppSpacing.lg),
+        const _AppVersionInfo(),
       ],
     );
   }
@@ -243,6 +248,40 @@ class _SettingsOption extends StatelessWidget {
       amount: '',
       status: StatusPill(label: status, color: color),
       onTap: () {},
+    );
+  }
+}
+
+class _AppVersionInfo extends StatelessWidget {
+  const _AppVersionInfo();
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+      child: Column(
+        children: [
+          Text(
+            _appVersionLabel,
+            textAlign: TextAlign.center,
+            style: textTheme.bodySmall?.copyWith(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.2,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _appBuildLabel,
+            textAlign: TextAlign.center,
+            style: textTheme.bodySmall?.copyWith(
+              color: AppColors.textSecondary.withAlpha(210),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
